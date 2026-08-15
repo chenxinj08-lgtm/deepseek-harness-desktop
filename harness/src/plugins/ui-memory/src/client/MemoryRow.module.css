@@ -70,7 +70,11 @@
   color: var(--dsw-alias-label-secondary);
 }
 
-/* One clickable memory entry. */
+/* One clickable memory entry (row wrapper anchors the per-entry delete button). */
+.entryRow {
+  position: relative;
+}
+
 .entry {
   display: flex;
   align-items: baseline;
@@ -81,6 +85,35 @@
   background: none;
   cursor: pointer;
   text-align: left;
+}
+
+/* Per-entry delete button, revealed on row hover. */
+.entryRemove {
+  display: none;
+  position: absolute;
+  top: 50%;
+  right: 0;
+  transform: translateY(-50%);
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: none;
+  border-radius: 12px;
+  background: none;
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 15px;
+  line-height: 24px;
+  text-align: center;
+  cursor: pointer;
+}
+
+.entryRow:hover .entryRemove {
+  display: block;
+}
+
+.entryRemove:hover {
+  background: var(--dsw-alias-fill-secondary-hover);
+  color: var(--dsw-alias-danger-primary);
 }
 
 .entry:hover .entryName {

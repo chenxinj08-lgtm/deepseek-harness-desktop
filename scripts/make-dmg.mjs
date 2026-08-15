@@ -28,11 +28,30 @@ for (const dir of dirs) {
   const vol = 'DeepSeek Harness'
 
   // 1) 签名(ad-hoc;有证书则用 DSH_CODESIGN_IDENTITY)
+  //    Electron 官方流程:先逐个签框架,再签应用主体(新版 codesign 对
+  //    ReactiveObjC 等框架直接 --deep 重签会报 code has no resources)
   const identity = process.env.DSH_CODESIGN_IDENTITY || '-'
+  const sign = (target) => {
+    const r = spawnSync('codesign', ['--force', '--sign', identity, target], { stdio: 'inherit' })
+    return r.status === 0
+  }
   console.log('[make-dmg] codesign: ' + appPath)
-  let r = spawnSync('codesign', ['--force', '--sign', identity, appPath], { stdio: 'inherit' })
-  if (r.status !== 0) process.exit(r.status ?? 1)
-  r = spawnSync('codesign', ['--verify', '--deep', '--strict', appPath], { stdio: 'inherit' })
+  const fwRoot = join(appPath, 'Contents', 'Frameworks')
+  let ok = true
+  if (statSync(fwRoot, { throwIfNoEntry: false })) {
+    const fw = spawnSync('find', [fwRoot, '-name', '*.framework', '-o', '-name', '*.app', '-o', '-name', '*.dylib'], { encoding: 'utf8' })
+    for (const t of (fw.stdout || '').split('\n').map((s) => s.trim()).filter(Boolean)) {
+      if (!sign(t)) { ok = false; break }
+    }
+  }
+  if (ok) ok = sign(appPath)
+  if (!ok) {
+    console.error('[make-dmg] 逐组件签名失败,回退 --deep 签名')
+    const r = spawnSync('codesign', ['--force', '--deep', '--sign', identity, appPath], { stdio: 'inherit' })
+    ok = r.status === 0
+  }
+  if (!ok) process.exit(1)
+  let r = spawnSync('codesign', ['--verify', '--deep', '--strict', appPath], { stdio: 'inherit' })
   if (r.status !== 0) process.exit(r.status ?? 1)
   console.log('[make-dmg] 签名校验通过')
 

@@ -8,7 +8,7 @@ import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
 import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
 import type {} from '@deepseek-ai/dsh-client-ui-slots'
 import { MemoryRow, type MemoryEntry, type MemoryRowInjected } from './MemoryRow.tsx'
-import { MEMORY_LIST_PATH, MEMORY_READ_PATH } from './protocol.ts'
+import { MEMORY_LIST_PATH, MEMORY_READ_PATH, MEMORY_NOTES_PATH, MEMORY_DELETE_PATH } from './protocol.ts'
 
 /** Required client services: sessions (current id) and the settings slots. */
 export const inject = ['slots', 'sessions']
@@ -63,6 +63,25 @@ export function apply(ctx: ClientContext): void {
           if (!response.ok) throw await readError(response, body)
           const parsed = body as { content?: unknown }
           return typeof parsed.content === 'string' ? parsed.content : ''
+        },
+        notes: async () => {
+          const url = new URL(MEMORY_NOTES_PATH, window.location.origin)
+          url.searchParams.set('session_id', current())
+          const response = await fetch(url, { method: 'GET', credentials: 'same-origin' })
+          const body = await responseJson(response)
+          if (!response.ok) throw await readError(response, body)
+          const parsed = body as { notes?: unknown }
+          return Array.isArray(parsed.notes)
+            ? (parsed.notes as Array<{ name: string; summary: string; content: string }>)
+            : []
+        },
+        remove: async (name) => {
+          const url = new URL(MEMORY_DELETE_PATH, window.location.origin)
+          url.searchParams.set('session_id', current())
+          url.searchParams.set('name', name)
+          const response = await fetch(url, { method: 'POST', credentials: 'same-origin' })
+          const body = await responseJson(response)
+          if (!response.ok) throw await readError(response, body)
         },
       }
     },

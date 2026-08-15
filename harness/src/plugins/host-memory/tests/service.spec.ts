@@ -51,3 +51,54 @@ describe('MemoryService injection cache', () => {
     expect(memory.globalIndexSnapshot()).toContain('- [pref2]')
   })
 })
+
+describe('MemoryService ephemeral notes', () => {
+  it('noteSet upserts by key, noteClear removes, and the snapshot refreshes', async () => {
+    const { memory } = await service()
+    await memory.initialize('/ws/n')
+    await memory.noteSet('/ws/n', 'task', '当前任务:记忆分层')
+    await memory.noteSet('/ws/n', 'task', '当前任务:记忆分层实现')
+    await memory.noteSet('/ws/n', 'decision', '采用 Hermes 双文件')
+    const notes = await memory.listNotes('/ws/n')
+    expect(notes).toHaveLength(2)
+    expect(notes.find(note => note.name === 'task')?.content).toBe('当前任务:记忆分层实现')
+    expect(memory.workspaceNotesSnapshot('/ws/n')).toContain('## decision')
+    await memory.noteClear('/ws/n', 'decision')
+    expect(await memory.listNotes('/ws/n')).toHaveLength(1)
+    expect(memory.workspaceNotesSnapshot('/ws/n')).not.toContain('decision')
+  })
+
+  it('noteSet bounds the store (8 entries, 1 KiB each) and keeps the newest', async () => {
+    const { memory } = await service()
+    await memory.initialize('/ws/n2')
+    for (let i = 0; i < 12; i++) await memory.noteSet('/ws/n2', `k${i}`, `v${i}`)
+    const notes = await memory.listNotes('/ws/n2')
+    expect(notes).toHaveLength(8)
+    expect(notes[0]?.name).toBe('k4')
+    expect(notes[7]?.name).toBe('k11')
+    await expect(memory.noteSet('/ws/n2', 'big', 'x'.repeat(2048))).rejects.toThrow(/exceeds/)
+  })
+
+  it('notes never enter the long-term index', async () => {
+    const { memory } = await service()
+    await memory.initialize('/ws/n3')
+    await memory.noteSet('/ws/n3', 'todo', '重构抽帧方案')
+    expect((await memory.list('/ws/n3')).workspace).toHaveLength(0)
+    expect(memory.workspaceIndexSnapshot('/ws/n3')).toBe('')
+  })
+})
+
+describe('MemoryService delete', () => {
+  it('remove deletes the file and its index line for workspace and global memories', async () => {
+    const { memory } = await service()
+    await memory.add('/ws/e', 'dep', '删除测试')
+    await memory.add(undefined, 'gdep', '全局删除测试')
+    await memory.remove('/ws/e', 'dep')
+    expect(await memory.read('/ws/e', 'dep')).toBeNull()
+    expect((await memory.read('/ws/e', 'MEMORY'))).not.toContain('- [dep]')
+    await memory.remove('/ws/e', 'gdep')
+    expect(await memory.read('/ws/e', 'gdep')).toBeNull()
+    expect(memory.globalIndexSnapshot()).not.toContain('- [gdep]')
+    await expect(memory.remove('/ws/e', 'missing')).rejects.toThrow(/not found/)
+  })
+})
