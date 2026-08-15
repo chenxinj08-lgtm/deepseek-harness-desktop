@@ -1,0 +1,19 @@
+{
+  // Client 侧插件合并类型门禁(浏览器环境,DOM lib)。paths 继承自 tsconfig.base.json。
+  // 用法: npx tsc --noEmit -p tsconfig.client-plugins.json
+  "extends": "./tsconfig.base.client.json",
+  "compilerOptions": {
+    "noEmit": true
+  },
+  "include": [
+    "src/plugins/ui-conversation/src/**/*.ts",
+    "src/plugins/ui-conversation/src/**/*.tsx",
+    "src/plugins/ui-local-files/src/**/*.ts",
+    "src/plugins/ui-local-files/src/**/*.tsx",
+    "src/plugins/ui-memory/src/**/*.ts",
+    "src/plugins/ui-memory/src/**/*.tsx",
+    "src/plugins/ui-message-edit/src/**/*.ts",
+    "src/plugins/ui-message-edit/src/**/*.tsx",
+    "src/plugins/connection/src/client/**/*.ts"
+  ]
+}

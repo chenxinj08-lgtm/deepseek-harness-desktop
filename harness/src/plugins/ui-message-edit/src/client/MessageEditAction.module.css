@@ -1,0 +1,19 @@
+/* Edit action for sent user messages: a pencil button in the action strip. */
+
+.action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 8px;
+  background: none;
+  color: var(--dsw-alias-label-tertiary);
+  cursor: pointer;
+}
+
+.action:hover {
+  background: var(--dsw-alias-fill-secondary-hover);
+  color: var(--dsw-alias-label-primary);
+}

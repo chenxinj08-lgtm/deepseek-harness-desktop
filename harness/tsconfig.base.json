@@ -1,0 +1,39 @@
+{
+  // Host 侧插件共享编译基座(类型检查与构建均以此为准)。
+  // 依赖经 node_modules 的 package.json types/exports 解析,无需官方 monorepo 的 paths 映射。
+  "compilerOptions": {
+    "target": "es2024",
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "lib": ["ES2024"],
+    "types": ["node"],
+    "strict": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "allowImportingTsExtensions": true,
+    "rewriteRelativeImportExtensions": true,
+    "verbatimModuleSyntax": false,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true,
+    "declaration": false,
+    "sourceMap": false,
+    // fork 本地包统一指向本仓库源码(官方 monorepo 同款做法):单包编译、门禁、打包
+    // 全部使用 fork 类型,消除 vendor 官方包与 fork 源码的类型漂移(augmentation 必须
+    // 解析到 fork 包本身,否则 ChatNodeDataMap 空 map → ChatNodeKind=never)。
+    "paths": {
+      "@deepseek-ai/dsh-host-local-files": ["./src/plugins/host-local-files/src/index.ts"],
+      "@deepseek-ai/dsh-llm": ["./src/plugins/llm/src/index.ts"],
+      "@deepseek-ai/dsh-llm/types": ["./src/plugins/llm/src/types.ts"],
+      "@deepseek-ai/dsh-llm/brand": ["./src/plugins/llm/src/brand.ts"],
+      "@deepseek-ai/dsh-llm/message": ["./src/plugins/llm/src/message.ts"],
+      "@deepseek-ai/dsh-host-apiproxy": ["./src/plugins/apiproxy/src/index.ts"],
+      "@deepseek-ai/dsh-host-apiproxy/api": ["./src/plugins/apiproxy/src/api/index.ts"],
+      "@deepseek-ai/dsh-host-apiproxy/api/*": ["./src/plugins/apiproxy/src/api/*"],
+      "@deepseek-ai/dsh-host-apiproxy/client": ["./src/plugins/apiproxy/src/fetch/client.ts"],
+      "@deepseek-ai/dsh-client-ui-conversation": ["./src/plugins/ui-conversation/src/index.ts"],
+      "@deepseek-ai/dsh-client-ui-conversation/client": ["./src/plugins/ui-conversation/src/client/index.ts"],
+      "@deepseek-ai/dsh-client-connection/client": ["./src/plugins/connection/src/client/index.ts"]
+    }
+  }
+}

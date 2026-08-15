@@ -1,0 +1,19 @@
+{
+  // Host 侧插件合并类型门禁(Node 环境,无 DOM)。paths 继承自 tsconfig.base.json。
+  // 用法: npx tsc --noEmit -p tsconfig.host-plugins.json
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true
+  },
+  "include": [
+    "src/plugins/llm/src/**/*.ts",
+    "src/plugins/llm-deepseek/src/**/*.ts",
+    "src/plugins/llm-pi-ai/src/**/*.ts",
+    "src/plugins/apiproxy/src/**/*.ts",
+    "src/plugins/connection/src/**/*.ts",
+    "src/plugins/host-local-files/src/**/*.ts",
+    "src/plugins/host-memory/src/**/*.ts",
+    "src/plugins/host-vision/src/**/*.ts"
+  ],
+  "exclude": ["src/plugins/connection/src/client/**"]
+}

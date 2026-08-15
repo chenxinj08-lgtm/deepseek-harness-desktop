@@ -1,0 +1,10 @@
+{
+  // Client 侧插件共享编译基座:浏览器库 API + React JSX。types 保留 node:
+  // paths 指向的 fork 源码(如 llm)import node:module,需 node 类型解析。
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "lib": ["ES2024", "DOM", "DOM.Iterable"],
+    "types": ["node"]
+  }
+}

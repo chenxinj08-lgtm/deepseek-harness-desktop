@@ -1,0 +1,20 @@
+# Your patch layer for this dsh profile, applied after every bundle layer:
+# a top-level YAML array of loader patch entries (id-targeted config
+# overrides, disables, and insert lists; `!!js` expressions allowed).
+
+# Local-files attachment plugin — registered here (user data, untouched by the
+# desktop updater) so it survives official dsh upgrades. The two package names
+# resolve via symlinks under ~/.dsh/profiles/web/node_modules/@deepseek-ai/.
+- insert:
+    - id: local-files
+      name: '@deepseek-ai/dsh-host-local-files'
+      inject: [webRuntime]
+      config:
+        storageRoot: !!js dshHomePath('local-files')
+        trustedHosts: !!js ctx.webRuntime.trustedHosts
+
+    - id: ui-local-files
+      name: '@deepseek-ai/dsh-client-ui-local-files'
+
+    - id: vision-inspect
+      name: '@deepseek-ai/dsh-host-vision'

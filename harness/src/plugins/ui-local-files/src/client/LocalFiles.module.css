@@ -1,0 +1,146 @@
+.hiddenInput {
+  display: none;
+}
+
+.picker {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--dsw-alias-label-tertiary);
+  cursor: pointer;
+}
+
+.picker:hover {
+  background: var(--dsw-alias-interactive-bg-hover);
+  color: var(--dsw-alias-label-secondary);
+}
+
+.picker:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.dropOverlay {
+  position: fixed;
+  z-index: 1000;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: color-mix(in srgb, var(--dsw-alias-bg-base) 72%, transparent);
+  pointer-events: none;
+}
+
+.dropCard {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 18px 24px;
+  border: 1px dashed var(--dsw-alias-state-business-primary);
+  border-radius: 14px;
+  background: var(--dsw-alias-bg-base);
+  color: var(--dsw-alias-label-primary);
+  box-shadow: 0 12px 40px color-mix(in srgb, var(--dsw-alias-label-primary) 14%, transparent);
+  font-size: 14px;
+}
+
+.dock {
+  box-sizing: border-box;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  width: calc(
+    100% -
+    var(--dsh-composer-side-clearance) -
+    var(--dsh-composer-side-clearance) -
+    var(--dsh-composer-dock-inset) -
+    var(--dsh-composer-dock-inset)
+  );
+  max-width: var(--dsh-composer-card-max-width);
+  margin: 0 auto;
+}
+
+.note {
+  flex-basis: 100%;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--dsh-alias-label-secondary, #8a909a);
+}
+
+.chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  max-width: 320px;
+  padding: 7px 8px 7px 10px;
+  border: 1px solid var(--dsw-alias-border-l1);
+  border-radius: 10px;
+  background: var(--dsw-specific-tip);
+  color: var(--dsw-alias-label-primary);
+}
+
+.chip[data-invalid] {
+  border-color: var(--dsw-alias-state-error-primary);
+}
+
+.chipIcon {
+  display: inline-flex;
+  flex: none;
+  color: var(--dsw-alias-label-tertiary);
+}
+
+.chipText {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.chipName {
+  overflow: hidden;
+  font-size: 12px;
+  line-height: 16px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chipSize {
+  color: var(--dsw-alias-label-caption);
+  font-size: 10px;
+  line-height: 14px;
+}
+
+.remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--dsw-alias-label-tertiary);
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+}
+
+.remove:hover {
+  background: var(--dsw-alias-interactive-bg-hover);
+  color: var(--dsw-alias-label-primary);
+}
+
+.chipThumb {
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 6px;
+  object-fit: cover;
+}
