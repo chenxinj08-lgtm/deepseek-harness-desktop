@@ -1,6 +1,6 @@
 // 用 NSIS 构建 Windows 正规安装器(Setup.exe)
 // 依赖: devDependency "nsis"(自带 makensis,支持 mac/linux/win)
-import { existsSync, readdirSync, rmSync, copyFileSync } from 'node:fs'
+import { existsSync, readdirSync, rmSync, copyFileSync, readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { spawnSync } from 'node:child_process'
@@ -33,7 +33,7 @@ if (!makensis) {
   process.exit(1)
 }
 
-const pkg = JSON.parse(require('node:fs').readFileSync(join(root, 'package.json'), 'utf8'))
+const pkg = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'))
 const version = pkg.version
 for (const dir of dirs) {
   const appDir = join(dist, dir)
