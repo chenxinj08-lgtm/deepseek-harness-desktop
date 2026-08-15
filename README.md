@@ -24,6 +24,20 @@
 | macOS（Intel） | `DeepSeek-Harness-x64.dmg` |
 | Windows x64 | `DeepSeek-Harness-win32-x64.zip` |
 
+### 一键下载
+
+```bash
+# macOS / Linux / Windows(Git Bash)
+bash <(curl -sL https://raw.githubusercontent.com/chenxinj08-lgtm/deepseek-harness-desktop/main/scripts/download-latest.sh)
+# 或
+gh release download -R chenxinj08-lgtm/deepseek-harness-desktop --pattern '*'
+```
+
+直接下载链接（latest）：
+- macOS（Apple Silicon）：`https://github.com/chenxinj08-lgtm/deepseek-harness-desktop/releases/latest/download/DeepSeek-Harness-arm64.dmg`
+- macOS（Intel）：`https://github.com/chenxinj08-lgtm/deepseek-harness-desktop/releases/latest/download/DeepSeek-Harness-x64.dmg`
+- Windows x64：`https://github.com/chenxinj08-lgtm/deepseek-harness-desktop/releases/latest/download/DeepSeek-Harness-win32-x64.zip`
+
 > 目前为未签名构建：
 > - macOS：首次打开请在 Finder 中右键应用 → 「打开」
 > - Windows：SmartScreen 提示时点击「更多信息 → 仍要运行」
