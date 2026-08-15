@@ -4,8 +4,7 @@
 
 ## 提交前检查
 
-1. **隐私扫描必须通过**：`node scripts/privacy-scan.mjs`（BLOCK=0 方可提交推送；
-   pre-push 钩子已自动执行，见 `scripts/install-hook.sh`）。
+1. **内容自查**：提交内容不得包含任何凭据、个人信息或本机路径。
 2. **提交信息规范**：`<type>: <摘要>`（type：feat / fix / perf / docs / chore / refactor）。
 3. **变更记录**：涉及 `harness/` 下插件源码的变更，需在 `harness/CHANGELOG.md` 补充条目。
 
@@ -20,7 +19,6 @@ npm run setup
 npm start
 
 # 3. 变更后验证
-node scripts/privacy-scan.mjs    # 隐私扫描
 npm run pack:mac                 # 打包验证（或对应平台）
 
 # 4. 提交
@@ -37,5 +35,5 @@ git commit -m "feat: <摘要>"
 ## 行为准则
 
 - 不引入任何遥测、统计上报或用户数据上传。
-- 不将个人密钥、凭据、本机路径提交入库（扫描器会拦截）。
+- 不将个人密钥、凭据、本机路径提交入库。
 - 尊重 DeepSeek 官方项目（deepseek-ai/deepseek-harness）的 MIT 许可与署名要求。

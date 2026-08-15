@@ -84,23 +84,12 @@ npm run zip:win    # 生成 Windows .zip
 └──────────────────────────────────────────────────────┘
 ```
 
-## 隐私与安全
-
-**安全发布机制**：仓库所有推送与发布均须通过三层检查，任何命中都会阻止推送：
-
-1. **本地全盘扫描（第一道）**：`scripts/privacy-scan.mjs` 对凭据、个人身份信息、机器相关数据等 18 类模式进行全量检查，
-   报告精确到「文件:行号:命中内容」；已安装为 pre-push 钩子（`scripts/install-hook.sh`）。
-2. **CI 扫描（第二道）**：GitHub Actions 每次推送自动运行同一扫描（`privacy` 任务），与本地结果交叉验证。
-3. **GitHub Secret Scanning（第三道）**：仓库已启用密钥推送保护，服务端再拦截一道。
-
-```bash
-node scripts/privacy-scan.mjs                 # 全盘扫描工作树（含插件包内部）
-node scripts/privacy-scan.mjs --range=A..B    # 额外扫描提交范围内新增行
-bash scripts/install-hook.sh                  # 安装 pre-push 钩子
-```
+## 隐私
 
 **数据边界**：会话、附件、记忆、API Key 全部保存在本机用户目录（macOS：`~/.dsh`；Windows：`%USERPROFILE%\.dsh`），
 不收集任何统计，不发送遥测，唯一外联为查询官方 npm 版本号。
+
+> 发布内容均经过隐私检查后方可发布。
 
 ## 更新机制
 
