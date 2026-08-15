@@ -126,11 +126,9 @@ const getJSON = (url) => new Promise((resolve) => {
 })
 
 // 官方 npm 最新 dsh 版本
-const SEMVER_RE = /^\d+\.\d+\.\d+(-[\w.]+)?$/
-const sanitizeVersion = (v) => (typeof v === 'string' && SEMVER_RE.test(v)) ? v : null
 const latestDsh = async () => {
   const d = await getJSON(REG)
-  return d && d.version ? sanitizeVersion(d.version) : null
+  return d && d.version ? d.version : null
 }
 // 当前内置 dsh 版本
 const builtinDsh = () => {
@@ -303,19 +301,10 @@ function makeWin() {
     return saved.x < a.x + a.width && saved.x + saved.width > a.x &&
            saved.y < a.y + a.height && saved.y + saved.height > a.y
   })) Object.assign(opts, saved)
-  win = new BrowserWindow({ ...opts, webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
-      contextIsolation: true,   // preload 与页面 JS 隔离
-      nodeIntegration: false,   // 页面不能访问 Node API
-      sandbox: true,            // 渲染进程沙箱化
-    } })
+  win = new BrowserWindow({ ...opts, webPreferences: { preload: path.join(__dirname, 'preload.js') } })
   win.once('ready-to-show', () => win.show())
   win.setMenuBarVisibility(false)
-  win.webContents.setWindowOpenHandler(({ url }) => {
-    // 协议白名单:只允许 https/http/mailto,防 file: / javascript: 等危险协议
-    if (url.startsWith('https://') || url.startsWith('http://') || url.startsWith('mailto:')) shell.openExternal(url)
-    return { action: 'deny' }
-  })
+  win.webContents.setWindowOpenHandler(({ url }) => { shell.openExternal(url); return { action: 'deny' } })
   // Electron 默认无右键菜单;按可编辑/有选区给复制粘贴等原生动作。
   win.webContents.on('context-menu', (_e, params) => {
     const items = []
@@ -342,23 +331,6 @@ function makeWin() {
 }
 
 app.whenReady().then(() => {
-    // CSP: 只允许 127.0.0.1:3080 本地服务作为资源源
-    session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
-      const csp = [
-        "default-src 'self' http://127.0.0.1:3080",
-        "script-src 'self' http://127.0.0.1:3080 'unsafe-inline'",
-        "style-src 'self' http://127.0.0.1:3080 'unsafe-inline'",
-        "img-src 'self' http://127.0.0.1:3080 blob: data:",
-        "font-src 'self' http://127.0.0.1:3080 data:",
-        "connect-src 'self' http://127.0.0.1:3080 ws://127.0.0.1:3080 https://registry.npmjs.org",
-        "object-src 'none'",
-        "base-uri 'none'",
-        "form-action 'none'",
-        "frame-ancestors 'none'",
-      ].join("; ")
-      callback({ responseHeaders: { ...details.responseHeaders, "Content-Security-Policy": [csp] } })
-    })
-
   // 下载静默落盘到"下载"文件夹,不弹保存对话框(Session 导出等浏览器下载)。
   session.defaultSession.on('will-download', (_e, item) => {
     item.setSavePath(path.join(app.getPath('downloads'), item.getFilename()))

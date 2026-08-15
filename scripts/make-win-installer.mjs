@@ -18,6 +18,11 @@ function findMakensis() {
   if (process.env.MAKENSIS && existsSync(process.env.MAKENSIS)) return process.env.MAKENSIS
   const local = join(root, 'node_modules', 'nsis-bin', process.platform === 'win32' ? 'makensis.exe' : 'makensis')
   if (existsSync(local)) return local
+  if (process.platform === 'win32') {
+    for (const p of ['C:\\Program Files (x86)\\NSIS\\makensis.exe', 'C:\\Program Files\\NSIS\\makensis.exe']) {
+      if (existsSync(p)) return p
+    }
+  }
   const probe = spawnSync(process.platform === 'win32' ? 'where' : 'which', ['makensis'], { encoding: 'utf8' })
   if (probe.status === 0) return 'makensis'
   return null
