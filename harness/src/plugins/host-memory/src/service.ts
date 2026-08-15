@@ -61,7 +61,7 @@ export function extractSummary(text: string): string {
     ?? lines.find(line => /\*\*[^*\n]+\*\*/u.test(line))
     ?? lines.find(line => /^[-*]\s/u.test(line.trim()))
     ?? lines[0]
-  return (candidate ?? '').replace(/[#*`]/gu, '').trim().slice(0, 80)
+  return (candidate ?? '').replace(/^[-*]\s+/u, '').replace(/[#*`]/gu, '').trim().slice(0, 80)
 }
 
 /** Config already validated and defaulted by the plugin schema. */
@@ -191,6 +191,9 @@ export class MemoryService extends Service {
       }
       for (const entry of entries) {
         if (!entry.endsWith('.md')) continue
+        // The index mirrors memory content line-for-line; searching it would
+        // duplicate every hit. Notes are searchable (they are working memory).
+        if (entry === MEMORY_INDEX) continue
         const text = await this.readIfExists(join(dir, entry))
         if (text === null) continue
         const lines = text.slice(0, MAX_FILE_BYTES).split('\n')

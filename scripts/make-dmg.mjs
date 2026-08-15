@@ -35,6 +35,17 @@ for (const dir of dirs) {
     const r = spawnSync(cmd, args, { stdio: 'inherit' })
     return r.status === 0
   }
+  // 0) 清理 vendor 内指向本机路径的符号链接(npm .bin 链接),
+  //    否则既导致签名失败(目标不存在)又会在产物中留下本机路径
+  const binDir = join(appPath, 'Contents', 'Resources', 'vendor', 'node_modules', '.bin')
+  if (statSync(binDir, { throwIfNoEntry: false })) {
+    const links = spawnSync('find', [binDir, '-type', 'l'], { encoding: 'utf8' })
+    for (const l of (links.stdout || '').split('\n').filter(Boolean)) {
+      rmSync(l, { force: true })
+    }
+    console.log('[make-dmg] 已清理 vendor/.bin 符号链接')
+  }
+
   console.log('[make-dmg] codesign: ' + appPath)
   const fwRoot = join(appPath, 'Contents', 'Frameworks')
   let ok = true

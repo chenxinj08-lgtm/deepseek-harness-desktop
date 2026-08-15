@@ -115,6 +115,27 @@ if (statSync(extra, { throwIfNoEntry: false })) {
   }
 }
 
+// 构建产物符号链接检查(dist 内的 .app 不得含指向本机路径的链接)
+function scanBuiltArtifacts(hits) {
+  const distDir = join(root, 'dist')
+  if (!statSync(distDir, { throwIfNoEntry: false })) return
+  const apps = spawnSync('find', [distDir, '-maxdepth', '3', '-name', '*.app', '-type', 'd'], { encoding: 'utf8' })
+  for (const a of (apps.stdout || '').split('\n').filter(Boolean)) {
+    const bin = join(a, 'Contents', 'Resources', 'vendor', 'node_modules', '.bin')
+    if (!statSync(bin, { throwIfNoEntry: false })) continue
+    const links = spawnSync('find', [bin, '-type', 'l'], { encoding: 'utf8' })
+    for (const l of (links.stdout || '').split('\n').filter(Boolean)) {
+      const target = (spawnSync('readlink', [l], { encoding: 'utf8' }).stdout || '').trim()
+      if (target.includes('/Users/') || target.startsWith('/')) {
+        hits.push({ level: 'BLOCK', rule: 'ARTIFACT_LOCAL_PATH', desc: '构建产物内含本机路径符号链接', file: l, line: 0, sample: target.slice(0, 80) })
+      }
+    }
+  }
+}
+
+// 构建产物检查
+scanBuiltArtifacts(hits)
+
 // 提交范围新增行(配合 pre-push hook)
 if (rangeArg) {
   const r = spawnSync('git', ['diff', '--no-color', rangeArg], { cwd: root, maxBuffer: 256 * 1024 * 1024 })

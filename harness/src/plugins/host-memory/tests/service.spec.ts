@@ -27,8 +27,10 @@ describe('MemoryService', () => {
     await memory.add(undefined, 'global', '全局:喜欢极短代码')
     const hits = await memory.search('/ws/b', '喜欢')
     const files = hits.map(hit => hit.file)
-    expect(files).toContain('pref.md')
-    expect(files).toContain('global.md')
+    expect(files).toContain('pref')
+    expect(files).toContain('global')
+    // The index file itself must not show up as a hit.
+    expect(files).not.toContain('MEMORY')
   })
 
   it('read prefers workspace file and rejects invalid or missing names', async () => {
@@ -110,7 +112,7 @@ describe('MemoryService smart search and summary', () => {
     await memory.add('/ws/s', 'notes', '杂记:今天讨论了构建,顺便部署了一次')
     const hits = await memory.search('/ws/s', '部署')
     expect(hits.length).toBeGreaterThanOrEqual(2)
-    expect(hits[0]?.file).toBe('deploy-guide.md')
+    expect(hits[0]?.file).toBe('deploy-guide')
     expect(hits[0]?.summary).toBe('部署指南:pnpm build && pnpm deploy')
     expect(typeof hits[0]?.updatedAt).toBe('number')
     expect(hits[0]?.updatedAt).toBeGreaterThan(0)

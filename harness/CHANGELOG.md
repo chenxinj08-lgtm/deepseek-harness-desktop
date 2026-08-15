@@ -4,6 +4,39 @@
 
 > **说明**:标注 `<!-- 内部过程记录:不开源 -->` 的条目为开发过程详细记录,仅作内部留存,不随开源发布。
 
+## v0.3.20 — 2026-08-15
+
+**三项原生级修复(输入框锁死 / 发送键状态 / 严格插话)+ 记忆检索沉淀智能升级**
+
+- **修复:切换软件/截图后输入框锁死**。根因是 IME 组合守卫 `composingRef`:截图或切换
+  WebContents 时 composition 序列被系统中断,`compositionend` 永不送达,守卫永久为 true,
+  输入框停留在组合态(不能正常输入/选中/Enter 发送)。修复:textarea 加 `onBlur`/`onFocus`
+  重置守卫(失焦即退出组合态,聚焦重进),与 Electron 切换窗口生命周期对齐。
+- **修复:运行中输入文字发送键不变**。根因是主按钮决策 `primaryStops = running && subagent
+  === null` 恒为真,运行中输入内容按钮仍是"停止"。修复:改为 `running && subagent === null
+  && empty` —— 运行中空草稿显示"停止"(指针用户可中断),输入内容即切"发送"(排队/插话),
+  按钮实时跟随真实 composer 状态(与 Codex/Kimi/Claude 一致)。
+- **修复:插话不是真正的插话**。根因(agent-loop 源码级):`agent.steer()` 只把消息插进
+  next-step inbox,运行中 `wakeDriver` 对非 abort 唤醒直接 return —— 长任务里要等当前
+  LLM/工具步骤跑完才生效,表现为"插话没反应"。修复(apiproxy 的 strict steer):
+  `agent.cancel({ kind: 'user' }, { keepInbox: true })` + `agent.steer(message)` ——
+  cancel 中止当前 step(保留 inbox),steer 落 next-turn 并带 wakeAfterAbort,driver 的
+  finally 见 wakeRequested && hasPending 立即开下一轮先消费插话(Claude/Codex 式打断)。
+  注:apiproxy 的 tsdown 产物(158K vs 官方 216K)因 chunk 拆分不完整无法直接注入,
+  运行时采用官方产物最小 patch(源码已入库)。
+- **记忆检索沉淀智能升级**:
+  - 检索按相关度排序:整词命中 > 片段命中,标题命中加权,最近更新的文件优先;
+    返回每条记忆的**要点摘要**(标题/加粗/列表项提取,非首行)+ `updatedAt`(供模型判断时效)。
+  - 索引摘要从"首行截断"改为 `extractSummary`(heading > bold > list > 首行,剥离 markdown)。
+  - 新增 `memory_harvest(name)`:任务收尾时把工作区便签沉淀为长期记忆(同名追加),并清空
+    便签 —— 短期工作状态 → 可检索的长期记忆,便签有界存储保持新鲜。系统提示已注明该纪律。
+  - 检索跳过索引文件 MEMORY.md(镜像内容,避免重复命中);搜索结果 file 去 `.md`(与
+    memory_read 的 name 契约一致)。
+- **验证**:host/client 门禁 0 错误;host-memory 测试 13/13(检索排序/要点摘要/updatedAt/
+  harvest 沉淀追加清空/便签界内);ui-conversation 418/418;重启后 web 200、页面无插件错误、
+  发送按钮渲染正常。
+
+
 ## v0.3.19 — 2026-08-15
 
 **修复:ui-memory 构建 id 错误导致整个 client 插件层崩溃 + 记忆系统分层优化(Hermes 式)**
