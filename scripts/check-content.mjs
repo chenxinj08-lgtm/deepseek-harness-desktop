@@ -2,8 +2,8 @@
 // ============================================================
 // 发布内容检查 —— 提交前对仓库内容执行敏感信息检查
 // 用法:
-//   node scripts/privacy-scan.mjs
-//   node scripts/privacy-scan.mjs --range=A..B
+//   node scripts/check-content.mjs
+//   node scripts/check-content.mjs --range=A..B
 // 退出码: 0 = 通过; 1 = 存在命中(禁止推送)
 // ============================================================
 import { spawnSync } from 'node:child_process'
@@ -133,8 +133,8 @@ for (const h of [...blocks, ...warns]) {
 console.log('---')
 console.log('扫描完成: 文件=' + files.length + '  BLOCK=' + blocks.length + '  WARN=' + warns.length)
 if (blocks.length) {
-  console.log('存在 BLOCK 级隐私风险,禁止推送/发布。请清理后重试。')
+  console.log('存在命中,禁止推送。请清理后重试。')
   process.exit(1)
 }
-console.log('无 BLOCK 级隐私风险' + (warns.length ? '(WARN 项请人工复核)' : ''))
+console.log('未发现命中' + (warns.length ? '(WARN 项请人工复核)' : ''))
 process.exit(0)

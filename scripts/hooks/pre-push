@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
-# pre-push 钩子 —— 推送前运行隐私全盘扫描(第一道防护)
+# pre-push 钩子 —— 推送前运行内容检查
 # 由 scripts/install-hook.sh 安装到 .git/hooks/pre-push
 set -uo pipefail
 ROOT="$(git rev-parse --show-toplevel 2>/dev/null || true)"
 [ -n "$ROOT" ] || exit 0
 NODE_BIN="$(command -v node || true)"
-SCANNER="$ROOT/scripts/privacy-scan.mjs"
+SCANNER="$ROOT/scripts/check-content.mjs"
 [ -n "$NODE_BIN" ] || { echo "pre-push: 未找到 node,跳过扫描"; exit 0; }
 [ -f "$SCANNER" ] || { echo "pre-push: 缺少 $SCANNER,跳过扫描"; exit 0; }
 
-echo "== pre-push: 隐私全盘扫描 =="
+echo "== pre-push: 内容检查 =="
 FAILED=0
 while read -r local_ref local_sha remote_ref remote_sha; do
   [ -n "${local_sha}" ] || continue
@@ -22,7 +22,7 @@ while read -r local_ref local_sha remote_ref remote_sha; do
   node "$SCANNER" --range="$RANGE" || FAILED=1
 done
 if [ "$FAILED" = "1" ]; then
-  echo "pre-push: 存在 BLOCK 级隐私风险,已阻止推送"
+  echo "pre-push: 存在命中,已阻止推送"
   exit 1
 fi
 echo "== pre-push: 扫描通过 =="

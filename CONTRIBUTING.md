@@ -30,7 +30,6 @@ git commit -m "feat: <摘要>"
 - 壳（Electron 主进程 / 自更新 / 窗口管理）：根目录 `main.js`、`preload.js`
 - 插件源码：`harness/src/plugins/`（构建与注册流程见 `harness/README.md`）
 - 构建与打包脚本：`scripts/`
-- 隐私扫描规则：`scripts/privacy-scan.mjs`（规则表在文件头部）
 
 ## 行为准则
 

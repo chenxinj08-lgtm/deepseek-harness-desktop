@@ -89,8 +89,6 @@ npm run zip:win    # 生成 Windows .zip
 **数据边界**：会话、附件、记忆、API Key 全部保存在本机用户目录（macOS：`~/.dsh`；Windows：`%USERPROFILE%\.dsh`），
 不收集任何统计，不发送遥测，唯一外联为查询官方 npm 版本号。
 
-> 发布内容均经过隐私检查后方可发布。
-
 ## 更新机制
 
 内置自更新器：启动后静默查询官方 npm registry 的 `@deepseek-ai/dsh` 最新版本 → 与内置版本不一致时右下角出现提示 →
@@ -113,9 +111,9 @@ npm run zip:win    # 生成 Windows .zip
 │   ├── src/plugins/          fork 官方包与自建插件的完整源码
 │   └── CHANGELOG.md          详细变更记录
 ├── vendor/                   运行时依赖清单与随仓库分发的官方插件包（vendor/extra/*.tgz）
-├── scripts/                  构建 / 打包 / 隐私扫描脚本
+├── scripts/                  构建与打包脚本
 ├── docs/                     插件注册模板等文档
-└── .github/workflows/        CI：三平台构建 + 隐私扫描
+└── .github/workflows/        CI：三平台构建
 ```
 
 ## 社区

@@ -124,6 +124,16 @@ export function InputBar({
       composingRef.current = false
     }, 10)
   }
+  // Window switch / screenshot tears the composition sequence down (the
+  // closing compositionend never arrives once the WebContents loses focus);
+  // a stuck composingRef would permanently block Enter sends and leave the
+  // box in a broken composition state. Reset on blur and restore on focus.
+  const onComposerBlur = (): void => {
+    composingRef.current = false
+  }
+  const onComposerFocus = (): void => {
+    composingRef.current = false
+  }
 
   // The Access seat's data: the host-computed permissions projection
   // (undefined = capability absent → the chip renders nothing).
@@ -545,10 +555,13 @@ export function InputBar({
     if (el !== null) toggleCommandMenu?.(selectionOf(el))
   }
 
-  // Ordinary sessions retain their primary Send/Stop toggle. A continuable
-  // child keeps Send as the primary action and exposes Stop independently so
-  // pointer users can queue follow-ups while its current turn is running.
-  const primaryStops = running && subagent === null
+  // Ordinary sessions toggle the primary action on live composer content: an
+  // empty draft during a run keeps Stop (pointer users can interrupt), typing
+  // flips it to Send so follow-ups queue (or steer on the accelerated chord)
+  // without ever leaving the box — the button follows the real composer state.
+  // A continuable child keeps Send as the primary action and exposes Stop
+  // independently so pointer users can queue follow-ups while its turn runs.
+  const primaryStops = running && subagent === null && empty
   const interruptible = running && continuable
   const primaryLabel = primaryStops ? t('input.stop') : t('input.send')
   const onPrimary = (): void => {
@@ -727,6 +740,8 @@ export function InputBar({
               onChange={onChange}
               onKeyDown={onKeyDown}
               onSelect={onSelect}
+              onBlur={onComposerBlur}
+              onFocus={onComposerFocus}
               onCopy={(e) => { onCopyOrCut(e, false) }}
               onCut={(e) => { onCopyOrCut(e, true) }}
               onPaste={onPaste}

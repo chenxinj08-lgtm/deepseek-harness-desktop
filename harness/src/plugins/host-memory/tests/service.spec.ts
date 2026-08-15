@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
-import { MemoryService } from '../src/service.ts'
+import { MemoryService, extractSummary } from '../src/service.ts'
 
 async function service(): Promise<{ memory: MemoryService; root: string }> {
   const root = await mkdtemp(join(tmpdir(), 'dsh-memory-'))
@@ -100,5 +100,63 @@ describe('MemoryService delete', () => {
     expect(await memory.read('/ws/e', 'gdep')).toBeNull()
     expect(memory.globalIndexSnapshot()).not.toContain('- [gdep]')
     await expect(memory.remove('/ws/e', 'missing')).rejects.toThrow(/not found/)
+  })
+})
+
+describe('MemoryService smart search and summary', () => {
+  it('ranks whole-term title matches above fragmented body hits', async () => {
+    const { memory } = await service()
+    await memory.add('/ws/s', 'deploy-guide', '部署指南:`pnpm build && pnpm deploy`')
+    await memory.add('/ws/s', 'notes', '杂记:今天讨论了构建,顺便部署了一次')
+    const hits = await memory.search('/ws/s', '部署')
+    expect(hits.length).toBeGreaterThanOrEqual(2)
+    expect(hits[0]?.file).toBe('deploy-guide.md')
+    expect(hits[0]?.summary).toBe('部署指南:pnpm build && pnpm deploy')
+    expect(typeof hits[0]?.updatedAt).toBe('number')
+    expect(hits[0]?.updatedAt).toBeGreaterThan(0)
+    expect(hits[0]?.lines.length).toBeGreaterThan(0)
+  })
+
+  it('extractSummary prefers headings over first lines and strips markdown', () => {
+    expect(extractSummary('# 部署\n\n第一行正文')).toBe('部署')
+    expect(extractSummary('**重点**:极短代码')).toBe('重点:极短代码')
+    expect(extractSummary('- 项目用 pnpm workspace')).toBe('项目用 pnpm workspace')
+    expect(extractSummary('普通第一行')).toBe('普通第一行')
+  })
+
+  it('add index lines use the extracted key-point summary', async () => {
+    const { memory } = await service()
+    await memory.add('/ws/s2', 'deploy', '# 部署\n\npnpm build')
+    const entries = (await memory.list('/ws/s2')).workspace
+    expect(entries[0]?.summary).toBe('部署')
+    expect(typeof entries[0]?.updatedAt).toBe('number')
+  })
+})
+
+describe('MemoryService harvest', () => {
+  it('settles notes into a durable memory, appends on same name, and clears notes', async () => {
+    const { memory } = await service()
+    await memory.initialize('/ws/h')
+    await memory.noteSet('/ws/h', 'decision', '采用 Hermes 双文件')
+    await memory.noteSet('/ws/h', 'next', '下一步:注入验证')
+    const saved = await memory.harvest('/ws/h', 'task-summary')
+    expect(saved).toContain('task-summary.md')
+    expect((await memory.read('/ws/h', 'task-summary'))).toContain('采用 Hermes 双文件')
+    expect((await memory.read('/ws/h', 'task-summary'))).toContain('下一步:注入验证')
+    expect(await memory.listNotes('/ws/h')).toHaveLength(0)
+    expect(memory.workspaceNotesSnapshot('/ws/h')).toBe('')
+    expect(memory.workspaceIndexSnapshot('/ws/h')).toContain('- [task-summary]')
+    // Same name appends instead of overwriting.
+    await memory.noteSet('/ws/h', 'next', '下一步:重启验证')
+    await memory.harvest('/ws/h', 'task-summary')
+    const content = await memory.read('/ws/h', 'task-summary')
+    expect(content).toContain('下一步:注入验证')
+    expect(content).toContain('下一步:重启验证')
+  })
+
+  it('harvest without notes fails', async () => {
+    const { memory } = await service()
+    await memory.initialize('/ws/h2')
+    await expect(memory.harvest('/ws/h2', 'empty')).rejects.toThrow(/no notes/)
   })
 })

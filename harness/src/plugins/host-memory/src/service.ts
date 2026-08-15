@@ -3,7 +3,7 @@
  * written only on explicit request — and short-term workspace notes — one
  * `ephemeral.md` per workspace, freely auto-updated by key during a task. */
 import { createHash } from 'node:crypto'
-import { mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises'
+import { mkdir, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { Service } from '@deepseek-ai/cordis'
 import type { Context } from '@deepseek-ai/cordis'
@@ -22,9 +22,13 @@ const NAME_PATTERN = /^[A-Za-z0-9][A-Za-z0-9-_]{0,63}$/u
 const EPHEMERAL_ENTRY_MAX_BYTES = 1024
 const EPHEMERAL_ENTRY_MAX_COUNT = 8
 
-/** A memory file's index line and its content, in search order. */
+/** A memory file's index line, key-point summary, and matching lines, in relevance order. */
 export interface MemoryHit {
   readonly file: string
+  /** Extracted key-point summary (title / bold / list lead, else first line). */
+  readonly summary: string
+  /** Last-write epoch ms (relevance tiebreak; lets the model judge freshness). */
+  readonly updatedAt: number
   readonly lines: string[]
 }
 
@@ -32,10 +36,11 @@ function workspaceKey(cwd: string): string {
   return createHash('sha256').update(cwd).digest('hex').slice(0, 16)
 }
 
-/** One memory index entry: file name plus its first-line summary. */
+/** One memory index entry: file name, key-point summary, and last-write time. */
 export interface MemoryEntry {
   readonly name: string
   readonly summary: string
+  readonly updatedAt: number
 }
 
 /** One short-term note: key, first-line summary, and full content. */
@@ -43,6 +48,20 @@ export interface NoteEntry {
   readonly name: string
   readonly summary: string
   readonly content: string
+}
+
+/**
+ * Extract the key-point summary from memory text: heading > bold lead > list
+ * item > first line — the lines that actually carry the point, instead of an
+ * arbitrary first sentence. Markdown syntax is stripped for index readability.
+ */
+export function extractSummary(text: string): string {
+  const lines = text.split('\n')
+  const candidate = lines.find(line => /^#{1,3}\s/u.test(line.trim()))
+    ?? lines.find(line => /\*\*[^*\n]+\*\*/u.test(line))
+    ?? lines.find(line => /^[-*]\s/u.test(line.trim()))
+    ?? lines[0]
+  return (candidate ?? '').replace(/[#*`]/gu, '').trim().slice(0, 80)
 }
 
 /** Config already validated and defaulted by the plugin schema. */
@@ -107,15 +126,27 @@ export class MemoryService extends Service {
    * index files from disk so the settings surface reflects manual edits,
    * unlike the cached snapshots used for system-prompt injection. */
   async list(cwd: string | undefined): Promise<{ global: MemoryEntry[]; workspace: MemoryEntry[] }> {
-    const parse = (index: string): MemoryEntry[] => index.split('\n')
-      .map(line => /^- \[([^\]]+)\]\(([^)]+)\.md\) — (.+)$/u.exec(line.trim()))
-      .filter((match): match is RegExpExecArray => match !== null)
-      .map(match => ({ name: match[1]!, summary: match[3]! }))
+    const parse = (index: string, dir: string): Promise<MemoryEntry[]> =>
+      Promise.all(index.split('\n')
+        .map(line => /^- \[([^\]]+)\]\(([^)]+)\.md\) — (.+)$/u.exec(line.trim()))
+        .filter((match): match is RegExpExecArray => match !== null)
+        .map(async match => {
+          let updatedAt = 0
+          try {
+            updatedAt = (await stat(join(dir, `${match[1]!}.md`))).mtimeMs
+          } catch {
+            // index entry without a backing file (manual edit): keep 0.
+          }
+          return { name: match[1]!, summary: match[3]!, updatedAt }
+        }))
     const globalText = (await this.readIfExists(join(this.config.storageRoot, MEMORY_INDEX))) ?? ''
     const workspaceText = cwd === undefined
       ? ''
       : (await this.readIfExists(join(this.workspaceDir(cwd), MEMORY_INDEX))) ?? ''
-    return { global: parse(globalText), workspace: parse(workspaceText) }
+    return {
+      global: await parse(globalText, this.config.storageRoot),
+      workspace: cwd === undefined ? [] : await parse(workspaceText, this.workspaceDir(cwd)),
+    }
   }
 
   /** Short-term notes of one workspace, in insertion order (disk truth). */
@@ -137,16 +168,21 @@ export class MemoryService extends Service {
     return null
   }
 
-  /** Substring search over the current workspace's and the global root's markdown files. */
+  /** Substring search over the current workspace's and the global root's markdown files.
+   * Results are ranked by relevance (exact-word > title > line matches, then
+   * the older file), each carrying a key-point summary and last-write time so
+   * the model can judge freshness before reading. */
   async search(cwd: string | undefined, query: string): Promise<MemoryHit[]> {
     const needle = query.trim().toLowerCase()
     if (needle === '') return []
+    const terms = needle.split(/\s+/u).filter(term => term !== '')
+    if (terms.length === 0) return []
     const dirs = [
-      ...(cwd === undefined ? [] : [this.workspaceDir(cwd)]),
-      this.config.storageRoot,
+      ...(cwd === undefined ? [] : [{ dir: this.workspaceDir(cwd), scoped: true as const }]),
+      { dir: this.config.storageRoot, scoped: false as const },
     ]
-    const hits: MemoryHit[] = []
-    for (const dir of dirs) {
+    const hits: Array<MemoryHit & { score: number }> = []
+    for (const { dir } of dirs) {
       let entries: string[]
       try {
         entries = await readdir(dir)
@@ -157,16 +193,38 @@ export class MemoryService extends Service {
         if (!entry.endsWith('.md')) continue
         const text = await this.readIfExists(join(dir, entry))
         if (text === null) continue
-        const lines = text.slice(0, MAX_FILE_BYTES).split('\n') // 与 read 一致:整读截断到 32 KiB
-        const matched: string[] = lines
-          .map((line, index) => ({ line, index }))
-          .filter(({ line }) => line.toLowerCase().includes(needle))
-          .slice(0, 8)
-          .map(({ line, index }) => `${index + 1}: ${line.slice(0, 200)}`)
-        if (matched.length > 0) hits.push({ file: entry, lines: matched })
+        const lines = text.slice(0, MAX_FILE_BYTES).split('\n')
+        let score = 0
+        const matched: string[] = []
+        let titleScore = 0
+        for (let index = 0; index < lines.length; index++) {
+          const lower = lines[index]!.toLowerCase()
+          if (!terms.some(term => lower.includes(term))) continue
+          if (index === 0) titleScore = 1
+          else if (/^#/u.test(lines[index]!.trim())) titleScore = Math.max(titleScore, 1)
+          // Whole-term match scores higher than a substring fragment.
+          score += terms.some(term => new RegExp(`\\b${term.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&')}\\b`, 'u').test(lower)) ? 2 : 1
+          if (matched.length < 4) matched.push(`${index + 1}: ${lines[index]!.slice(0, 200)}`)
+        }
+        if (score === 0) continue
+        const file = entry.replace(/\.md$/u, '')
+        let updatedAt = 0
+        try {
+          updatedAt = (await stat(join(dir, entry))).mtimeMs
+        } catch {
+          // stat raced the file away: keep 0.
+        }
+        hits.push({
+          file,
+          summary: extractSummary(text),
+          updatedAt,
+          lines: matched,
+          score: score * 10 + titleScore * 5 + (updatedAt === 0 ? 0 : Math.min(updatedAt / 1e11, 1)),
+        })
       }
     }
-    return hits.slice(0, 10)
+    hits.sort((left, right) => right.score - left.score)
+    return hits.slice(0, 10).map(({ file, summary, updatedAt, lines }) => ({ file, summary, updatedAt, lines }))
   }
 
   /** Write a new memory into the current workspace and append its index line. */
@@ -180,7 +238,7 @@ export class MemoryService extends Service {
     const dir = cwd === undefined ? this.config.storageRoot : this.workspaceDir(cwd)
     await mkdir(dir, { recursive: true })
     const file = join(dir, `${name}.md`)
-    const summary = trimmed.split('\n')[0]!.slice(0, 80)
+    const summary = extractSummary(trimmed)
     await writeFile(file, `${trimmed}\n`, 'utf8')
     // Maintain the index: one link line per memory file (idempotent replace).
     const indexFile = join(dir, MEMORY_INDEX)
@@ -227,7 +285,7 @@ export class MemoryService extends Service {
     }
     const entries = await this.readEphemeral(cwd)
     const kept = entries.filter(entry => entry.name !== key)
-    kept.push({ name: key, summary: trimmed.split('\n')[0]!.slice(0, 80), content: trimmed })
+    kept.push({ name: key, summary: extractSummary(trimmed), content: trimmed })
     await this.writeEphemeral(cwd, kept.slice(-EPHEMERAL_ENTRY_MAX_COUNT))
   }
 
@@ -264,6 +322,35 @@ export class MemoryService extends Service {
     }
     flush()
     return entries
+  }
+
+  /** Settle short-term notes into a long-term memory file (harvest), then clear the notes.
+   * The model calls this when wrapping up: working state becomes durable memory
+   * the next session can read, and the bounded note store stays fresh. */
+  async harvest(cwd: string, name: string): Promise<string> {
+    if (!NAME_PATTERN.test(name)) throw new Error(`memory name must match ${NAME_PATTERN.source}`)
+    const notes = await this.readEphemeral(cwd)
+    if (notes.length === 0) throw new Error('no notes to harvest in this workspace')
+    const blocks = notes
+      .map(note => `### ${note.name}\n\n${note.content}`)
+      .join('\n\n')
+    const dir = this.workspaceDir(cwd)
+    await mkdir(dir, { recursive: true })
+    const file = join(dir, `${name}.md`)
+    const summary = extractSummary(blocks)
+    const existing = (await this.readIfExists(file)) ?? ''
+    const content = existing === '' ? blocks : `${existing.trimEnd()}\n\n${blocks}\n`
+    await writeFile(file, content, 'utf8')
+    const indexFile = join(dir, MEMORY_INDEX)
+    const index = (await this.readIfExists(indexFile)) ?? ''
+    const line = `- [${name}](${name}.md) — ${summary}`
+    const kept = index.split('\n').filter(existingLine => !existingLine.startsWith(`- [${name}]`))
+    kept.push(line)
+    const next = `${kept.filter(line => line.trim() !== '').join('\n')}\n`
+    await writeFile(indexFile, next, 'utf8')
+    await this.writeEphemeral(cwd, [])
+    this.cacheWorkspaceIndex(cwd, next)
+    return file
   }
 
   private async readEphemeral(cwd: string): Promise<NoteEntry[]> {

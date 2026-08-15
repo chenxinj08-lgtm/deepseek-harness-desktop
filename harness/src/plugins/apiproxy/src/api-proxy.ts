@@ -2694,7 +2694,18 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
           agent.inbox.replace(itemId, freezeMessage({ ...message, content: action.content }))
         } else {
           agent.inbox.remove(itemId)
-          if (action.kind === 'steer') agent.steer(message)
+          if (action.kind === 'steer') {
+            // Strict steer = interrupt the running step and process the steer
+            // immediately (Claude/Codex-style): cancel aborts the in-flight
+            // LLM/tool activity keeping the inbox, then steer() lands the
+            // message in next-turn with wakeAfterAbort=true — the driver's
+            // finally sees wakeRequested && hasPending and opens the next
+            // turn consuming the steer first. Without the cancel, agent.steer
+            // alone only inserts into next-step and waits for the current
+            // step to finish (perceived as "steer not working" on long runs).
+            agent.cancel({ kind: 'user' }, { keepInbox: true })
+            agent.steer(message)
+          }
         }
         return Promise.resolve(ok(request, { accepted: true as const }))
       },

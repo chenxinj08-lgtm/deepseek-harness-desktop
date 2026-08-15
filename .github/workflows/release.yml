@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: node scripts/privacy-scan.mjs
+      - run: node scripts/check-content.mjs
         env:
           DSH_SCAN_USERNAMES: ''
 
