@@ -96,6 +96,13 @@ npm run zip:win    # 生成 Windows .zip
 内置自更新器：启动后静默查询官方 npm registry 的 `@deepseek-ai/dsh` 最新版本 → 与内置版本不一致时右下角出现提示 →
 点击「重启安装」下载并替换内置运行时 → 重启生效。更新只动官方 dsh 包，不碰用户数据与插件注册。
 
+## 文档
+
+- [安装说明](docs/INSTALL.md)（macOS / Windows 极简安装指引）
+- [插件注册模板](docs/cordis.patch.yml.example)
+- [安全策略](SECURITY.md)
+- [贡献指南](CONTRIBUTING.md)
+
 ## 目录结构
 
 ```
@@ -116,6 +123,13 @@ npm run zip:win    # 生成 Windows .zip
 - 官方社区介绍帖：[deepseek-ai/deepseek-harness#discussions/1727](https://github.com/deepseek-ai/deepseek-harness/discussions/1727)
 - 仓库 Discussions：[讨论区](../../discussions)
 - 本仓库已收录 `dsh-plugin` 话题，可在官方插件生态中检索发现
+
+## 致谢
+
+- [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)：官方运行时与插件体系（MIT）
+- [Electron](https://github.com/electron/electron)：桌面应用框架
+- [Cordis](https://github.com/cordiverse/cordis)：插件化架构
+- [NSIS](https://nsis.sourceforge.io/)：Windows 安装器
 
 ## 免责声明
 

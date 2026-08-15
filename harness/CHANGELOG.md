@@ -4,6 +4,29 @@
 
 > **说明**:标注 `<!-- 内部过程记录:不开源 -->` 的条目为开发过程详细记录,仅作内部留存,不随开源发布。
 
+## v0.3.19 — 2026-08-15
+
+**修复:ui-memory 构建 id 错误导致整个 client 插件层崩溃 + 记忆系统分层优化(Hermes 式)**
+
+- **根因(线上事故)**:`ui-memory/tsdown.config.ts` 的 `clientBundle('@deepseek-ai/dsh-ui-memory')`
+  缺少官方包名中的 `-client-`。`clientBundle` 把这个 id 原样写进产物头
+  `window.__ModuleLoader__.load({ id: "@deepseek-ai/dsh-ui-memory" })`,而运行时按官方包名
+  `@deepseek-ai/dsh-client-ui-memory` 校验注册 —— id 不匹配 → client-modules 报
+  `bundle loaded without registering "@deepseek-ai/dsh-client-ui-memory" via __ModuleLoader__.load` →
+  **整个 client 插件层(ui-conversation / ui-local-files / ui-message-edit / ui-tool)全部加载失败**,
+  应用降级:插话反馈标"未知 surface 事件"、发送按钮状态不实时、编辑按钮消失、附件按钮异常。
+- **修复**:ui-memory / ui-local-files / ui-conversation 三个 tsdown.config.ts 的 clientBundle id
+  统一改为官方包名(`dsh-client-ui-*`);重建 ui-memory 注入 vendor,重启应用后插件层完整恢复。
+- **记忆分层优化**(对齐 Hermes 双文件 + Codex 预算 + Claude 动态注入):
+  - 新增**短期便签层**(每工作区 `ephemeral.md`):`memory_note_set(key, content)` 同键覆盖、
+    `memory_note_clear(key)` 删除、有界存储(8 条 × 1 KiB);自动注入系统提示"工作区便签"区。
+  - 新增 `memory_delete(name)`(长期记忆删除,工作区优先后全局)与 `/memory/v1/delete` POST 端点。
+  - 新增 `/memory/v1/notes` GET 端点;ui-memory 弹窗新增"工作区便签"区 + 每条记忆 hover 删除按钮。
+  - 纪律不变:长期记忆仍 explicit-write-only(用户明确要求才写入);便签层供任务中自由维护工作状态。
+- **验证**:host/client 门禁 0 错误;host-memory 测试 8/8(便签 upsert/上限/清除、删除语义、
+  便签不入长期索引);浏览器实测插件层恢复(消息流/编辑按钮/发送按钮状态实时切换/附件按钮),
+  ui-memory client.js 头部 `load({ id: "@deepseek-ai/dsh-client-ui-memory" })` 校验通过。
+
 ## v0.3.16 — 2026-08-15
 
 **视觉框选(region)修复 + 视频分析 video_analyze + 消息编辑 + 弹窗居中**

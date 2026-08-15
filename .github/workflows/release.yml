@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  privacy:
+  check:
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
@@ -84,10 +84,13 @@ jobs:
         with:
           path: artifacts
       - run: |
+          cd artifacts
+          shasum -a 256 $(find . -type f | sort) > SHA256SUMS
+          cd ..
           if gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            gh release upload "$GITHUB_REF_NAME" artifacts/*/* --repo "$GITHUB_REPOSITORY" --clobber
+            gh release upload "$GITHUB_REF_NAME" artifacts/*/* artifacts/SHA256SUMS --repo "$GITHUB_REPOSITORY" --clobber
           else
-            gh release create "$GITHUB_REF_NAME" artifacts/*/*               --title "DeepSeek Harness 桌面版 $GITHUB_REF_NAME"               --notes "安装包见下方 Assets。macOS 未签名需右键打开;Windows 见 SmartScreen 提示。"               --repo "$GITHUB_REPOSITORY"
+            gh release create "$GITHUB_REF_NAME" artifacts/*/* artifacts/SHA256SUMS --title "DeepSeek Harness 桌面版 $GITHUB_REF_NAME" --notes "安装包见下方 Assets。macOS 未签名需右键打开;Windows 见 SmartScreen 提示。" --repo "$GITHUB_REPOSITORY"
           fi
         env:
           GH_TOKEN: ${{ github.token }}
@@ -108,10 +111,13 @@ jobs:
           if ! ls artifacts/*/ >/dev/null 2>&1; then echo '没有可用产物'; exit 1; fi
           TAG=$(gh api "repos/$GITHUB_REPOSITORY/tags" --jq '.[0].name')
           echo "目标 tag: $TAG"
+          cd artifacts
+          shasum -a 256 $(find . -type f | sort) > SHA256SUMS
+          cd ..
           if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            gh release upload "$TAG" artifacts/*/* --repo "$GITHUB_REPOSITORY" --clobber
+            gh release upload "$TAG" artifacts/*/* artifacts/SHA256SUMS --repo "$GITHUB_REPOSITORY" --clobber
           else
-            gh release create "$TAG" artifacts/*/*               --title "DeepSeek Harness 桌面版 $TAG"               --notes "安装包见下方 Assets。macOS 未签名需右键打开;Windows 见 SmartScreen 提示。"               --repo "$GITHUB_REPOSITORY"
+            gh release create "$TAG" artifacts/*/* artifacts/SHA256SUMS --title "DeepSeek Harness 桌面版 $TAG" --notes "安装包见下方 Assets。macOS 未签名需右键打开;Windows 见 SmartScreen 提示。" --repo "$GITHUB_REPOSITORY"
           fi
         env:
           GH_TOKEN: ${{ github.token }}

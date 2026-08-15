@@ -3,7 +3,7 @@
 //  2. 磁盘镜像内放置 Applications 快捷方式(拖拽安装)
 //  3. 卷图标与卷名
 import { spawnSync } from 'node:child_process'
-import { mkdirSync, readdirSync, rmSync, symlinkSync } from 'node:fs'
+import { existsSync, mkdirSync, readdirSync, rmSync, statSync, symlinkSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -28,27 +28,41 @@ for (const dir of dirs) {
   const vol = 'DeepSeek Harness'
 
   // 1) 签名(ad-hoc;有证书则用 DSH_CODESIGN_IDENTITY)
-  //    Electron 官方流程:先逐个签框架,再签应用主体(新版 codesign 对
-  //    ReactiveObjC 等框架直接 --deep 重签会报 code has no resources)
+  //    按 electron-builder 标准流程:动态库 → framework 版本目录 → Helper → 主应用;
+  //    无二进制的 framework(如 ReactiveObjC)自动跳过
   const identity = process.env.DSH_CODESIGN_IDENTITY || '-'
-  const sign = (target) => {
-    const r = spawnSync('codesign', ['--force', '--sign', identity, target], { stdio: 'inherit' })
+  const run = (cmd, args) => {
+    const r = spawnSync(cmd, args, { stdio: 'inherit' })
     return r.status === 0
   }
   console.log('[make-dmg] codesign: ' + appPath)
   const fwRoot = join(appPath, 'Contents', 'Frameworks')
   let ok = true
-  if (statSync(fwRoot, { throwIfNoEntry: false })) {
-    const fw = spawnSync('find', [fwRoot, '-name', '*.framework', '-o', '-name', '*.app', '-o', '-name', '*.dylib'], { encoding: 'utf8' })
-    for (const t of (fw.stdout || '').split('\n').map((s) => s.trim()).filter(Boolean)) {
-      if (!sign(t)) { ok = false; break }
+
+  // 1a. 所有动态库
+  const dylibs = spawnSync('find', [appPath, '-name', '*.dylib'], { encoding: 'utf8' })
+  for (const t of (dylibs.stdout || '').split('\n').filter(Boolean)) {
+    if (!run('codesign', ['--force', '--sign', identity, t])) ok = false
+  }
+  // 1b. 每个 framework 的真实版本目录(仅当存在二进制时)
+  const fws = spawnSync('find', [fwRoot, '-maxdepth', '1', '-name', '*.framework'], { encoding: 'utf8' })
+  for (const fw of (fws.stdout || '').split('\n').filter(Boolean)) {
+    const name = fw.slice(0, -'.framework'.length).split('/').pop()
+    const ver = join(fw, 'Versions', 'A')
+    if (existsSync(join(ver, name))) {
+      if (!run('codesign', ['--force', '--sign', identity, ver])) ok = false
     }
   }
-  if (ok) ok = sign(appPath)
+  // 1c. Helper 应用
+  const helpers = spawnSync('find', [fwRoot, '-name', '*.app'], { encoding: 'utf8' })
+  for (const t of (helpers.stdout || '').split('\n').filter(Boolean)) {
+    if (!run('codesign', ['--force', '--sign', identity, t])) ok = false
+  }
+  // 1d. 主应用
+  if (ok) ok = run('codesign', ['--force', '--sign', identity, appPath])
   if (!ok) {
     console.error('[make-dmg] 逐组件签名失败,回退 --deep 签名')
-    const r = spawnSync('codesign', ['--force', '--deep', '--sign', identity, appPath], { stdio: 'inherit' })
-    ok = r.status === 0
+    ok = run('codesign', ['--force', '--deep', '--sign', identity, appPath])
   }
   if (!ok) process.exit(1)
   let r = spawnSync('codesign', ['--verify', '--deep', '--strict', appPath], { stdio: 'inherit' })

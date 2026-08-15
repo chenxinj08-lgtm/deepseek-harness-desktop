@@ -1,11 +1,10 @@
 #!/usr/bin/env node
 // ============================================================
-// 隐私安全扫描器 —— 推送/发布前的全盘检查(第一道防护)
+// 发布内容检查 —— 提交前对仓库内容执行敏感信息检查
 // 用法:
-//   node scripts/privacy-scan.mjs                 # 扫描整个工作树
-//   node scripts/privacy-scan.mjs --range=A..B    # 额外扫描提交范围内新增行
-// 退出码: 0 = 通过; 1 = 存在 BLOCK 级命中(禁止推送)
-// 环境变量: DSH_SCAN_USERNAMES(逗号分隔的本机用户名,可选)
+//   node scripts/privacy-scan.mjs
+//   node scripts/privacy-scan.mjs --range=A..B
+// 退出码: 0 = 通过; 1 = 存在命中(禁止推送)
 // ============================================================
 import { spawnSync } from 'node:child_process'
 import { readFileSync, readdirSync, statSync } from 'node:fs'
