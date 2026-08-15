@@ -77,7 +77,10 @@ async function start() {
 }
 function stop() {
   if (serverProc && serverProc.pid) {
-    try { process.kill(-serverProc.pid, 'SIGTERM') } catch (e) {}
+    try {
+      if (process.platform === 'win32') spawnSync('taskkill', ['/pid', String(serverProc.pid), '/T', '/F'], { stdio: 'ignore' })
+      else process.kill(-serverProc.pid, 'SIGTERM') // POSIX:杀 detached 进程组,连带子进程
+    } catch (e) {}
     serverProc = null
   }
 }
@@ -100,9 +103,17 @@ async function boot() {
     else win.loadURL(RETRY)
   } else win.loadURL(RETRY)
 }
-start() // 顶层立即启动:与窗口初始化并行
-
-// —— 自更新器(零上传:检测官方 npm 新 dsh → 下载 → 替换内置 vendor) ——
+// 单实例锁:重复启动时聚焦已有窗口,避免端口与服务重复占用。
+if (!app.requestSingleInstanceLock()) {
+  app.exit(0)
+} else {
+  app.on('second-instance', () => {
+    if (win && !win.isDestroyed()) {
+      if (win.isMinimized()) win.restore()
+      win.focus()
+    }
+  })
+  start() // 顶层立即启动:与窗口初始化并行
 let update = null, dlState = { done: false }
 
 const getJSON = (url) => new Promise((resolve) => {
@@ -170,10 +181,24 @@ async function checkUpdate(silent) {
 }
 
 // 更新后自检:插件注册与包都在用户层,官方升级只动 dsh 包;这里兜底确认
-// ①三个插件包仍在 ②用户层注册行仍在 ③新 dsh 依赖的 web-app 版本未漂移。
+// ①全部插件包仍在 ②用户层注册行仍在 ③新 dsh 依赖的 web-app 版本未漂移。
+// semver 元组:[主, 次, 补丁, rc号(正式版为 Infinity)];`^0.1.0-rc.6` 语义 = 同主段且 ≥ 基线。
+const semverParts = (v) => {
+  const m = String(v).match(/^(\d+)\.(\d+)\.(\d+)(?:-rc\.(\d+))?$/)
+  return m ? [Number(m[1]), Number(m[2]), Number(m[3]), m[4] === undefined ? Infinity : Number(m[4])] : null
+}
+const rangeCompatible = (want, actual) => {
+  const w = semverParts(String(want).replace(/^[\^~]/, ''))
+  const a = semverParts(actual)
+  if (!w || !a || w[0] !== a[0]) return false
+  if (w[0] === 0 && w[1] !== a[1]) return false // 0.x 系列:次版本锁定(^0.1.x 不允许 0.2.x)
+  for (let i = 1; i < 4; i++) if (w[i] !== a[i]) return a[i] > w[i]
+  return true
+}
 function verifyPlugins() {
   const problems = []
-  const pkgs = ['dsh-host-local-files', 'dsh-client-ui-local-files', 'dsh-client-ui-conversation']
+  const pkgs = ['dsh-host-local-files', 'dsh-client-ui-local-files', 'dsh-client-ui-conversation',
+    'dsh-host-vision', 'dsh-host-memory', 'dsh-client-ui-memory']
   for (const p of pkgs) {
     if (!fs.existsSync(path.join(VENDOR, 'node_modules', '@deepseek-ai', p))) problems.push(`缺少包 ${p}`)
   }
@@ -188,36 +213,60 @@ function verifyPlugins() {
     const dshPkg = JSON.parse(fs.readFileSync(path.join(VENDOR, 'node_modules', '@deepseek-ai', 'dsh', 'package.json'), 'utf8'))
     const want = dshPkg.dependencies?.['@deepseek-ai/dsh-web-app']
     const webAppPkg = JSON.parse(fs.readFileSync(path.join(VENDOR, 'node_modules', '@deepseek-ai', 'dsh-web-app', 'package.json'), 'utf8'))
-    if (want && webAppPkg.version && !want.replace(/^\^/, '').startsWith(webAppPkg.version.replace(/-rc.*/, ''))) {
+    if (want && webAppPkg.version && !rangeCompatible(want, webAppPkg.version)) {
       problems.push(`web-app 版本漂移:依赖 ${want},实际 ${webAppPkg.version}`)
     }
   } catch (e) { /* 读取失败由上面问题项兜底 */ }
   return problems
 }
 
-// 下载并安装:拉取新 dsh → 替换内置 vendor 的 @deepseek-ai/dsh → 重启(只动官方包,不动壳)
+// fork/自建包:官方 npm 无这些版本或为旧版,整树替换后从备份恢复,保证插件升级后仍生效。
+const FORK_KEEP = ['dsh-llm', 'dsh-llm-deepseek', 'dsh-llm-pi-ai', 'dsh-host-apiproxy',
+  'dsh-client-connection', 'dsh-client-ui-conversation', 'dsh-host-local-files',
+  'dsh-client-ui-local-files', 'dsh-host-vision', 'dsh-host-memory', 'dsh-client-ui-memory']
+
+// 下载并安装:拉取新 dsh 完整依赖树 → 整树替换 @deepseek-ai → 恢复 fork/自建包 →
+// 自检,失败自动回滚到 .upd-bak(不丢插件,不丢运行时)。
 async function applyUpdate() {
   if (dlState.done || !update) return
   const target = path.join(UPD, 'dl')
+  const scoped = path.join(VENDOR, 'node_modules', '@deepseek-ai')
+  const bak = path.join(VENDOR, '.upd-bak')
   try {
     fs.rmSync(target, { recursive: true, force: true })
     fs.mkdirSync(target, { recursive: true })
     overlay(`<span style="color:#3964fe">⬇</span> 正在下载官方 v${update.v}…`, update.notes)
     if (!(await npmInstall(target, update.v))) throw new Error('npm')
-    const src = path.join(target, 'node_modules', '@deepseek-ai', 'dsh')
-    const dst = path.join(VENDOR, 'node_modules', '@deepseek-ai', 'dsh')
-    if (!fs.existsSync(src) || !fs.existsSync(dst)) throw new Error('path')
-    fs.rmSync(dst, { recursive: true, force: true })
-    fs.cpSync(src, dst, { recursive: true })
-    dlState = { done: true, version: update.v }
+    const dlScoped = path.join(target, 'node_modules', '@deepseek-ai')
+    if (!fs.existsSync(path.join(dlScoped, 'dsh')) || !fs.existsSync(scoped)) throw new Error('path')
+    fs.rmSync(bak, { recursive: true, force: true })
+    fs.cpSync(scoped, bak, { recursive: true }) // 备份现树(含 fork 包与全部依赖)
+    fs.rmSync(scoped, { recursive: true, force: true })
+    fs.cpSync(dlScoped, scoped, { recursive: true }) // 整树替换官方依赖
+    for (const p of FORK_KEEP) { // 恢复 fork/自建包,官方升级不覆盖
+      const from = path.join(bak, p)
+      if (!fs.existsSync(from)) continue
+      fs.rmSync(path.join(scoped, p), { recursive: true, force: true })
+      fs.cpSync(from, path.join(scoped, p), { recursive: true })
+    }
     const problems = verifyPlugins()
     if (problems.length > 0) {
-      overlay(`<span style="color:#f0a020">⚠</span> 官方 v${update.v} 已下载,但自检发现问题:${problems.join('; ')} · 建议先核对插件再重启`, update.notes)
+      fs.rmSync(scoped, { recursive: true, force: true }) // 自检失败 → 回滚
+      fs.cpSync(bak, scoped, { recursive: true })
+      overlay(`<span style="color:#f0a020">⚠</span> 官方 v${update.v} 下载完成但自检未通过(${problems.join('; ')})`, update.notes)
     } else {
+      fs.rmSync(bak, { recursive: true, force: true })
+      dlState = { done: true, version: update.v }
       overlay(`<span style="color:#34c759">✓</span> 官方 v${update.v} 已安装 · 点击重启生效 · <a href="#" onclick="window.dsh&&window.dsh.reboot();return false" style="color:#3964fe;text-decoration:none">重启</a>`, update.notes)
     }
   } catch (e) {
-    overlay('<span style="color:#ff3b30">✕</span> 更新失败,请稍后重试')
+    if (fs.existsSync(bak) && fs.existsSync(scoped)) { // 中途失败同样回滚
+      try {
+        fs.rmSync(scoped, { recursive: true, force: true })
+        fs.cpSync(bak, scoped, { recursive: true })
+      } catch (rollbackError) { /* 回滚失败保持现状,下次更新可重试 */ }
+    }
+    overlay('<span style="color:#ff3b30">✕</span> 更新失败,已回滚到原版本')
   }
 }
 
@@ -305,6 +354,7 @@ app.whenReady().then(() => {
   makeWin(); boot()
   setTimeout(() => checkUpdate(true), 4000) // 启动后静默检查,发现新版才弹角落提示
   app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) { makeWin(); boot() } })
-})
+  })
 app.on('before-quit', stop)
 app.on('window-all-closed', () => app.quit())
+}

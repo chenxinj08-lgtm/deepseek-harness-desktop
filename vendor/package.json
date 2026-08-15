@@ -11,6 +11,10 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
-    "@deepseek-ai/dsh": "^0.1.0-rc.6"
+    "@deepseek-ai/dsh": "^0.1.0-rc.6",
+    "csv-parse": "^6.2.1",
+    "exceljs": "^4.4.0",
+    "saxes": "^6.0.0",
+    "yauzl": "^3.4.0"
   }
 }
