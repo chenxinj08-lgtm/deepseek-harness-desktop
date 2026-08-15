@@ -69,7 +69,7 @@ async function start() {
   try {
     if (await up()) return // 端口已被服务 → 不重复 spawn,根除 EADDRINUSE
     const fd = fs.openSync(logFile(), 'a')
-    serverProc = spawn(NODE, ['--expose-internals', BIN, 'web'], {
+    serverProc = spawn(NODE, [BIN, 'web'], {
       detached: true, stdio: ['ignore', fd, fd], env: NODE_ENV,
     })
     serverProc.on('exit', () => { serverProc = null }) // 崩溃即清句柄,允许重启
@@ -135,10 +135,33 @@ const latestDsh = async () => {
 // 当前内置 dsh 版本
 const builtinDsh = () => {
   try {
-    return spawnSync(NODE, ['--expose-internals', BIN, '--version'], { encoding: 'utf8', timeout: 15000, env: NODE_ENV })
+    return spawnSync(NODE, [BIN, '--version'], { encoding: 'utf8', timeout: 15000, env: NODE_ENV })
       .stdout.trim().split('\n').pop() || null
   } catch (e) { return null }
 }
+
+// HTML 转义:防注入,然后只恢复无属性的白名单标签(防属性注入)
+const escHtml = (s) => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')
+const safeOverlayHtml = (s) => {
+    const e = escHtml(s)
+    return e
+      // 简单开闭合标签(无属性)
+      .replace(/&lt;(span|b|i|strong|em)&gt;/gi, '<$1>')
+      .replace(/&lt;\/(span|b|i|strong|em)&gt;/gi, '</$1>')
+      .replace(/&lt;br\s*\/?&gt;/gi, '<br>')
+      // span with style (只允许 color / text-decoration)
+      .replace(/&lt;span style=&quot;([^&]*?)&quot;&gt;/gi, (m, s) =>
+        /^color:[\w#]+(;\s*text-decoration:[\w]+)?$/.test(s) ? '<span style="'+s+'">' : m)
+      // a with href="#" onclick="window.dsh..." (处理 &amp;&amp; 转义)
+      .replace(/&lt;a href=&quot;#&quot; onclick=&quot;window\.dsh(?:&amp;)?&amp;window\.dsh\.apply\(\);return false&quot;\s*style=&quot;([^&]*?)&quot;&gt;/gi,
+        (m, style) => '<a href="#" onclick="window.dsh&&window.dsh.apply();return false" style="'+style+'">')
+      .replace(/&lt;a href=&quot;#&quot; onclick=&quot;window\.dsh(?:&amp;)?&amp;window\.dsh\.apply\(\);return false&quot;&gt;/gi,
+        '<a href="#" onclick="window.dsh&&window.dsh.apply();return false">')
+      .replace(/&lt;a href=&quot;#&quot; onclick=&quot;window\.dsh(?:&amp;)?&amp;window\.dsh\.reboot\(\);return false&quot;\s*style=&quot;([^&]*?)&quot;&gt;/gi,
+        (m, style) => '<a href="#" onclick="window.dsh&&window.dsh.reboot();return false" style="'+style+'">')
+      .replace(/&lt;a href=&quot;#&quot; onclick=&quot;window\.dsh(?:&amp;)?&amp;window\.dsh\.reboot\(\);return false&quot;&gt;/gi,
+        '<a href="#" onclick="window.dsh&&window.dsh.reboot();return false">')
+  }
 
 // 应用内角标:注入到 app 主窗口右下角(非桌面角);悬停展开 release notes
 // 全部在主进程轻量执行,不新建窗口、不阻塞 UI
@@ -155,7 +178,8 @@ function overlay(html, notes) {
       t.addEventListener('mouseenter', () => { const n = t.querySelector('.dsh-tn'); if (n.textContent.trim()) n.style.maxHeight = '180px' })
       t.addEventListener('mouseleave', () => { t.querySelector('.dsh-tn').style.maxHeight = '0' })
     }
-    t.querySelector('.dsh-tb').innerHTML = ${JSON.stringify(html)}
+    const safeHtml = safeOverlayHtml(html)
+    t.querySelector('.dsh-tb').innerHTML = ${JSON.stringify(safeHtml)}
     t.querySelector('.dsh-tn').textContent = ${JSON.stringify(notes || '')}
     t.style.display = 'block'
   })()`).catch(() => {})
