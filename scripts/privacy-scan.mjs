@@ -39,10 +39,19 @@ const RULES = [
   { id: 'ENV_FILE', level: 'BLOCK', re: /^[A-Za-z_][A-Za-z0-9_]*=[^#\n]{0,200}$/gm, desc: '.env 类环境变量文件', onlyFiles: ['.env', '.env.local', '.env.production', '.env.development'] },
 ]
 
-// 本机用户名(可选注入;扫描时自动读取 $USER)
-const usernames = new Set(
-  (process.env.DSH_SCAN_USERNAMES || process.env.USER || '').split(',').map((s) => s.trim()).filter(Boolean),
-)
+// 本机用户名:显式注入(DSH_SCAN_USERNAMES)优先;未注入时自动读取 $USER,
+// 但忽略 CI 等通用账户名(runner/root/ubuntu 等),避免误报
+const GENERIC_USERS = new Set(['runner', 'root', 'ubuntu', 'vsts', 'admin', 'builder', 'azure', 'actions', 'test', 'user'])
+const usernames = new Set()
+if (process.env.DSH_SCAN_USERNAMES !== undefined) {
+  for (const s of process.env.DSH_SCAN_USERNAMES.split(',')) {
+    const t = s.trim()
+    if (t) usernames.add(t)
+  }
+} else {
+  const u = (process.env.USER || '').trim()
+  if (u && !GENERIC_USERS.has(u)) usernames.add(u)
+}
 
 function scanText(text, label, hits) {
   const lines = String(text).split('\n')
