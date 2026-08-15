@@ -84,9 +84,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: |
-          RUN_ID=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow release.yml --event push --limit 1 --json databaseId --jq '.[0].databaseId')
-          echo "从 run $RUN_ID 下载产物"
-          gh run download "$RUN_ID" --repo "$GITHUB_REPOSITORY" -n mac-arm64 -n win-x64 -D artifacts
+          for RUN_ID in $(gh run list --repo "$GITHUB_REPOSITORY" --workflow release.yml --event push --limit 5 --json databaseId --jq '.[].databaseId'); do
+            if gh run download "$RUN_ID" --repo "$GITHUB_REPOSITORY" -n mac-arm64 -n win-x64 -D artifacts >/dev/null 2>&1; then
+              echo "已从 run $RUN_ID 下载产物"
+              break
+            fi
+          done
+          if ! ls artifacts/*/ >/dev/null 2>&1; then echo '没有可用产物'; exit 1; fi
           TAG=$(gh api "repos/$GITHUB_REPOSITORY/tags" --jq '.[0].name')
           echo "目标 tag: $TAG"
           if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
