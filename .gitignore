@@ -9,3 +9,4 @@ build/.ico-tmp/
 build/icon.icns
 .backup/
 .zcode/
+*.backup
