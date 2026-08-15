@@ -28,11 +28,13 @@
 
 | 平台 | 安装包 |
 | --- | --- |
-| macOS（Apple Silicon） | `DeepSeek-Harness-arm64.dmg` |
-| macOS（Intel） | `DeepSeek-Harness-x64.dmg` |
-| Windows x64 | `DeepSeek-Harness-win32-x64.zip` |
+| macOS（Apple Silicon） | `DeepSeek-Harness-arm64.dmg`（拖拽安装） |
+| macOS（Intel） | `DeepSeek-Harness-x64.dmg`（拖拽安装） |
+| Windows x64 | `DeepSeek-Harness-Setup-x64.exe`（安装器，含卸载程序） |
+| Windows x64（便携版） | `DeepSeek-Harness-win32-x64.zip` |
 
-> 当前为未签名构建：macOS 首次打开请在 Finder 中右键 → 「打开」；Windows 在 SmartScreen 提示时选择「更多信息 → 仍要运行」。
+> 签名状态：macOS 为 ad-hoc 签名（未公证），首次打开请在 Finder 中右键 → 「打开」；
+> Windows 安装器未做代码签名，SmartScreen 提示时选择「更多信息 → 仍要运行」。
 
 **一键下载**
 

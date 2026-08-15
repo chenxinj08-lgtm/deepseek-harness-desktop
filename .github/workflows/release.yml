@@ -36,7 +36,7 @@ jobs:
 
   mac-x64:
     if: startsWith(github.ref, 'refs/tags/')
-    runs-on: macos-13
+    runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -65,10 +65,15 @@ jobs:
       - run: npm run setup
       - run: npm run pack:win
       - run: npm run zip:win
+      - name: Install NSIS
+        run: choco install nsis -y --no-progress
+      - run: npm run installer:win
       - uses: actions/upload-artifact@v4
         with:
           name: win-x64
-          path: dist/*.zip
+          path: |
+            dist/*.zip
+            dist/*.exe
 
   release:
     if: startsWith(github.ref, 'refs/tags/')

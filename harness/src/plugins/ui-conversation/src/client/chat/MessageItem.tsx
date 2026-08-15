@@ -8,7 +8,7 @@ import type { ReactNode } from 'react'
 import type {
   ModelRetryNode, TurnErrorNode, UserMessageNode,
 } from '@deepseek-ai/dsh-client-runtime/client'
-import { JsonBlock, MessageText, StateDot } from '@deepseek-ai/dsh-client-ui-primitives'
+import { Button, JsonBlock, MessageText, Pill, StateDot } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { PropsRenderSlots } from '@deepseek-ai/dsh-client-ui-slots'
 import type { SessionId } from '@deepseek-ai/dsh-client-runtime/client'
 import { closeEdit, editingOf, requestEditSave, subscribeEdit, type MessageEditState } from '../edit-state.ts'
@@ -382,18 +382,10 @@ function InlineEditor({
           {attachments.map(({ index, label }) => {
             const off = removed.has(index)
             return (
-              <span key={index} className={`${css.inlineAttachChip}${off ? ` ${css.inlineAttachChipOff}` : ''}`}>
+              <Pill key={index} onClick={() => { toggleAttachment(index) }} className={`${css.inlineAttachChip}${off ? ` ${css.inlineAttachChipOff}` : ''}`}>
                 {label}
-                <button
-                  type="button"
-                  className={css.inlineAttachRemove}
-                  aria-label={off ? `重新保留 ${label}` : `移除 ${label}`}
-                  title={off ? '重新保留此附件' : '移除此附件'}
-                  onClick={() => { toggleAttachment(index) }}
-                >
-                  {off ? '↩' : '×'}
-                </button>
-              </span>
+                <span className={css.inlineAttachRemove} aria-hidden>{off ? '↩' : '×'}</span>
+              </Pill>
             )
           })}
           <span className={css.inlineAttachHint}>× 可移除附件,保存时不再发送</span>
@@ -402,12 +394,12 @@ function InlineEditor({
       {error !== null && <div className={css.inlineError}>{error}</div>}
       <div className={css.inlineFooter}>
         <span className={css.inlineHint}>⌘/Ctrl+Enter 发送</span>
-        <button type="button" className={css.inlineCancel} disabled={saving} onClick={() => { closeEdit(sessionId, seq) }}>
+        <Button variant="ghost" size="sm" disabled={saving} onClick={() => { closeEdit(sessionId, seq) }}>
           {t('cancel')}
-        </button>
-        <button type="button" className={css.inlineSave} disabled={saving || draft.trim() === ''} onClick={() => { void save() }}>
-          {saving ? '保存中…' : '保存并发送'}
-        </button>
+        </Button>
+        <Button variant="primary" size="sm" disabled={saving || draft.trim() === ''} onClick={() => { void save() }}>
+          {saving ? '发送中…' : '发送'}
+        </Button>
       </div>
     </div>
   )

@@ -10,7 +10,7 @@ case "$(uname -s)" in
     if [ "$ARCH" = "arm64" ]; then FILE="DeepSeek-Harness-arm64.dmg"; else FILE="DeepSeek-Harness-x64.dmg"; fi
     ;;
   MINGW*|MSYS*|CYGWIN*)
-    FILE="DeepSeek-Harness-win32-x64.zip"
+    FILE="DeepSeek-Harness-Setup-x64.exe"
     ;;
   *)
     echo "暂不支持的系统: $(uname -s)"; exit 1

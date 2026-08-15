@@ -13,11 +13,12 @@
   "scripts": {
     "start": "electron .",
     "setup": "node scripts/setup-vendor.mjs",
-    "pack:mac": "electron-packager . \"DeepSeek Harness\" --platform=darwin --arch=arm64 --out=dist --overwrite --icon=DeepSeek-Harness --extra-resource vendor --ignore=\"^/(harness|dist|build|scripts|docs|node_modules)(/|$)\" --ignore=\"^/vendor($|/)\" --ignore=\"^[.]git($|/)\"",
-    "pack:mac:x64": "electron-packager . \"DeepSeek Harness\" --platform=darwin --arch=x64 --out=dist --overwrite --icon=DeepSeek-Harness --extra-resource vendor --ignore=\"^/(harness|dist|build|scripts|docs|node_modules)(/|$)\" --ignore=\"^/vendor($|/)\" --ignore=\"^[.]git($|/)\"",
+    "pack:mac": "electron-packager . \"DeepSeek Harness\" --platform=darwin --arch=arm64 --out=dist --overwrite --app-bundle-id=com.deepseek-harness.desktop --icon=DeepSeek-Harness --extra-resource vendor --ignore=\"^/(harness|dist|build|scripts|docs|node_modules)(/|$)\" --ignore=\"^/vendor($|/)\" --ignore=\"^[.]git($|/)\"",
+    "pack:mac:x64": "electron-packager . \"DeepSeek Harness\" --platform=darwin --arch=x64 --out=dist --overwrite --app-bundle-id=com.deepseek-harness.desktop --icon=DeepSeek-Harness --extra-resource vendor --ignore=\"^/(harness|dist|build|scripts|docs|node_modules)(/|$)\" --ignore=\"^/vendor($|/)\" --ignore=\"^[.]git($|/)\"",
     "pack:win": "electron-packager . \"DeepSeek Harness\" --platform=win32 --arch=x64 --out=dist --overwrite --icon=DeepSeek-Harness --extra-resource vendor --ignore=\"^/(harness|dist|build|scripts|docs|node_modules)(/|$)\" --ignore=\"^/vendor($|/)\" --ignore=\"^[.]git($|/)\"",
     "dmg:mac": "node scripts/make-dmg.mjs",
     "zip:win": "node scripts/zip-win.mjs",
+    "installer:win": "node scripts/make-win-installer.mjs",
     "ico": "node scripts/make-ico.mjs"
   },
   "devDependencies": {
@@ -33,5 +34,8 @@
   },
   "engines": {
     "node": ">=20"
+  },
+  "allowScripts": {
+    "nsis@0.0.0": true
   }
 }

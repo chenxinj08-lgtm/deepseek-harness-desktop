@@ -375,17 +375,21 @@
   padding: 8px 10px;
   border: 1px solid var(--dsw-alias-border-l2);
   border-radius: 8px;
-  background: var(--dsw-alias-fill-secondary);
+  background: var(--dsw-alias-bg-layer-1);
   color: var(--dsw-alias-label-primary);
   font: inherit;
-  font-size: 13px;
-  line-height: 20px;
+  font-size: 14px;
+  line-height: 22px;
   resize: vertical;
   outline: none;
 }
 
 .inlineEditor:focus {
-  border-color: var(--dsw-alias-accent-primary);
+  border-color: var(--dsw-alias-brand-primary);
+}
+
+.inlineEditor::placeholder {
+  color: var(--dsw-alias-label-dimmed);
 }
 
 .inlineAttachments {
@@ -425,44 +429,10 @@
   color: var(--dsw-alias-label-tertiary);
 }
 
-.inlineCancel,
-.inlineSave {
-  height: 28px;
-  padding: 0 14px;
-  border-radius: 14px;
-  font-size: 13px;
-  cursor: pointer;
-}
 
-.inlineCancel {
-  border: 1px solid var(--dsw-alias-border-l2);
-  background: none;
-  color: var(--dsw-alias-label-primary);
-}
-
-.inlineSave {
-  border: none;
-  background: var(--dsw-alias-accent-primary);
-  color: var(--dsw-alias-label-primary-on-accent, #fff);
-}
-
-.inlineSave:disabled,
-.inlineCancel:disabled {
-  opacity: 0.5;
-  cursor: default;
-}
 
 /* Removable attachment chip in the inline editor (official Pill family). */
 .inlineAttachChip {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 2px 6px 2px 10px;
-  border-radius: 12px;
-  background: var(--dsw-alias-fill-secondary);
-  font-size: 12px;
-  line-height: 20px;
-  color: var(--dsw-alias-label-primary);
   max-width: 240px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -478,22 +448,12 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 18px;
-  height: 18px;
-  padding: 0;
-  border: none;
-  border-radius: 9px;
-  background: transparent;
-  color: var(--dsw-alias-label-tertiary);
-  font-size: 13px;
+  width: 16px;
+  height: 16px;
+  font-size: 12px;
   line-height: 1;
-  cursor: pointer;
+  color: var(--dsw-alias-label-tertiary);
   flex: none;
-}
-
-.inlineAttachRemove:hover {
-  background: var(--dsw-alias-fill-secondary-hover);
-  color: var(--dsw-alias-label-primary);
 }
 
 .inlineAttachHint {
