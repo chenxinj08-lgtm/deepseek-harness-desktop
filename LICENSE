@@ -19,9 +19,3 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-
----
-
-本仓库分发的运行时与插件包（vendor/extra/*.tgz）为 DeepSeek 官方项目
-deepseek-ai/deepseek-harness 的构建产物，版权归 DeepSeek 所有，按该仓库的
-MIT 许可证使用（https://github.com/deepseek-ai/deepseek-harness）。
