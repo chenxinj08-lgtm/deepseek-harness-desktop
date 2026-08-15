@@ -1,0 +1,71 @@
+name: build
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+jobs:
+  mac-arm64:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run setup
+      - run: npm run pack:mac
+      - run: npm run dmg:mac
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mac-arm64
+          path: dist/*.dmg
+
+  mac-x64:
+    runs-on: macos-13
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run setup
+      - run: npm run pack:mac:x64
+      - run: npm run dmg:mac
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mac-x64
+          path: dist/*.dmg
+
+  win-x64:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run setup
+      - run: npm run pack:win
+      - run: npm run zip:win
+      - uses: actions/upload-artifact@v4
+        with:
+          name: win-x64
+          path: dist/*.zip
+
+  release:
+    needs: [mac-arm64, mac-x64, win-x64]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - run: |
+          gh release create "$GITHUB_REF_NAME" artifacts/*/*             --title "DeepSeek Harness 桌面版 $GITHUB_REF_NAME"             --notes "安装包见下方 Assets。macOS 未签名需右键打开;Windows 见 SmartScreen 提示。"             --repo "$GITHUB_REPOSITORY"
+        env:
+          GH_TOKEN: ${{ github.token }}

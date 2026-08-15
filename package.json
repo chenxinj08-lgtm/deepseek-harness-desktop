@@ -1,0 +1,27 @@
+{
+  "name": "deepseek-harness-desktop",
+  "productName": "DeepSeek Harness",
+  "version": "0.2.5",
+  "description": "DeepSeek Harness 桌面版 —— 内置官方 dsh 运行时与本地文件/视觉插件的自包含 Electron 桌面壳（macOS / Windows）",
+  "main": "main.js",
+  "license": "MIT",
+  "author": "chenxinj08-lgtm",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/chenxinj08-lgtm/deepseek-harness-desktop.git"
+  },
+  "scripts": {
+    "start": "electron .",
+    "setup": "node scripts/setup-vendor.mjs",
+    "pack:mac": "electron-packager . \"DeepSeek Harness\" --platform=darwin --arch=arm64 --out=dist --overwrite --icon=DeepSeek-Harness --extra-resource vendor --ignore=\"^/(dsh-项目文件|dist|build|scripts|docs|node_modules)(/|$)\" --ignore=\"^/vendor($|/)\" --ignore=\"^[.]git($|/)\"",
+    "pack:mac:x64": "electron-packager . \"DeepSeek Harness\" --platform=darwin --arch=x64 --out=dist --overwrite --icon=DeepSeek-Harness --extra-resource vendor --ignore=\"^/(dsh-项目文件|dist|build|scripts|docs|node_modules)(/|$)\" --ignore=\"^/vendor($|/)\" --ignore=\"^[.]git($|/)\"",
+    "pack:win": "electron-packager . \"DeepSeek Harness\" --platform=win32 --arch=x64 --out=dist --overwrite --icon=DeepSeek-Harness --extra-resource vendor --ignore=\"^/(dsh-项目文件|dist|build|scripts|docs|node_modules)(/|$)\" --ignore=\"^/vendor($|/)\" --ignore=\"^[.]git($|/)\"",
+    "dmg:mac": "node scripts/make-dmg.mjs",
+    "zip:win": "node scripts/zip-win.mjs",
+    "ico": "node scripts/make-ico.mjs"
+  },
+  "devDependencies": {
+    "@electron/packager": "^20.3.0",
+    "electron": "^43.4.0"
+  }
+}

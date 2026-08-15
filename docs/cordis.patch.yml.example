@@ -1,0 +1,15 @@
+# 用户层插件注册模板 —— 复制为 ~/.dsh/profiles/web/cordis.patch.yml 后重启应用生效
+# 本地文件附件插件与视觉检查插件(官方 deepseek-harness 构建产物,随桌面版内置)
+- insert:
+    - id: local-files
+      name: '@deepseek-ai/dsh-host-local-files'
+      inject: [webRuntime]
+      config:
+        storageRoot: !!js dshHomePath('local-files')
+        trustedHosts: !!js ctx.webRuntime.trustedHosts
+
+    - id: ui-local-files
+      name: '@deepseek-ai/dsh-client-ui-local-files'
+
+    - id: vision-inspect
+      name: '@deepseek-ai/dsh-host-vision'

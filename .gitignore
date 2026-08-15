@@ -1,0 +1,10 @@
+.DS_Store
+node_modules/
+dist/
+dsh-项目文件/
+vendor/node_modules/
+.npm-cache/
+*.log
+build/.ico-tmp/
+build/icon.icns
+.backup/
