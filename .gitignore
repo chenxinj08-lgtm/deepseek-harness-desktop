@@ -2,6 +2,7 @@
 node_modules/
 dist/
 vendor/node_modules/
+lib/
 .npm-cache/
 *.log
 build/.ico-tmp/

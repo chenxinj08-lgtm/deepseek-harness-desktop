@@ -2,12 +2,20 @@ name: build
 
 on:
   push:
+    branches: [main]
     tags: ['v*']
   workflow_dispatch:
 
 jobs:
-  mac-arm64:
+  privacy:
     if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: node scripts/privacy-scan.mjs
+
+  mac-arm64:
+    if: startsWith(github.ref, 'refs/tags/')
     runs-on: macos-14
     steps:
       - uses: actions/checkout@v4
@@ -25,7 +33,7 @@ jobs:
           path: dist/*.dmg
 
   mac-x64:
-    if: github.event_name == 'push'
+    if: startsWith(github.ref, 'refs/tags/')
     runs-on: macos-13
     steps:
       - uses: actions/checkout@v4
@@ -43,7 +51,7 @@ jobs:
           path: dist/*.dmg
 
   win-x64:
-    if: github.event_name == 'push'
+    if: startsWith(github.ref, 'refs/tags/')
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -61,7 +69,7 @@ jobs:
           path: dist/*.zip
 
   release:
-    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+    if: startsWith(github.ref, 'refs/tags/')
     needs: [mac-arm64, mac-x64, win-x64]
     runs-on: ubuntu-latest
     steps:

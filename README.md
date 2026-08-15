@@ -84,6 +84,21 @@ scripts/       构建脚本（setup-vendor / make-dmg / zip-win / make-ico）
 docs/          用户层插件注册模板（cordis.patch.yml.example）
 ```
 
+## 🔐 隐私与发布安全(三重防护)
+
+推送/发布前必须全部通过,任何 BLOCK 级命中都会阻止推送:
+
+1. **本地全盘扫描(第一道)**:`scripts/privacy-scan.mjs` —— 密钥/邮箱/手机号/用户名/本机路径/身份证号等 18 类规则,
+   报告精确到「文件:行号:命中内容」;已通过 `scripts/install-hook.sh` 安装为 pre-push 钩子,推送即查。
+2. **CI 扫描(第二道)**:GitHub Actions 每次推送自动运行同一扫描(`privacy` 任务),与本地结果交叉验证。
+3. **GitHub Secret Scanning(第三道)**:仓库已启用密钥推送保护,服务端再拦一道。
+
+```bash
+node scripts/privacy-scan.mjs                 # 全盘扫描工作树(含插件包内部)
+node scripts/privacy-scan.mjs --range=A..B    # 额外扫描提交范围内新增行
+bash scripts/install-hook.sh                  # 安装 pre-push 钩子
+```
+
 ## ⚖️ 免责声明
 
 本项目是社区桌面壳，**非 DeepSeek 官方产品**。「DeepSeek Harness」为官方项目名称
